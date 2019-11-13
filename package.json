@@ -1,0 +1,25 @@
+{
+  "name": "patpati",
+  "version": "1.0.0",
+  "description": "A PatPat interpreter, JS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adri326/patpati.git"
+  },
+  "keywords": [
+    "patpat"
+  ],
+  "author": "Shad Amethyst",
+  "license": "WTFPL",
+  "bugs": {
+    "url": "https://github.com/adri326/patpati/issues"
+  },
+  "homepage": "https://github.com/adri326/patpati#readme",
+  "dependencies": {
+    "yargs": "^14.2.0"
+  }
+}
