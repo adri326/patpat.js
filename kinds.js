@@ -1,0 +1,17 @@
+const KINDS = module.exports = {
+  TUPLE: Symbol("TUPLE"),
+  STRING: Symbol("STRING"),
+  PATTERN: Symbol("PATTERN"),
+  NEXT_ELEMENT: Symbol("NEXT_ELEMENT"),
+  DEFINE_SYMBOL: Symbol("DEFINE_SYMBOL"),
+  DEFINE_PATTERN: Symbol("DEFINE_PATTERN"),
+  DEFINE_COMPLEX: Symbol("DEFINE_COMPLEX"),
+  DEFINE: Symbol("DEFINE"),
+  SYMBOL: Symbol("SYMBOL"),
+  OPERATOR: Symbol("OPERATOR"),
+  ARRAY: Symbol("ARRAY"),
+
+  FUNCTION_CALL: Symbol("FUNCTION_CALL"),
+  PATTERN_CALL: Symbol("PATTERN_CALL"),
+  EXPRESSION: Symbol("EXPRESSION")
+};

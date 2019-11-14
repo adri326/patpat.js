@@ -1,89 +1,134 @@
+const chalk = require("chalk");
+const mangle = require("./mangle.js");
+const KINDS = require("./kinds.js");
+const {CompileError} = require("./errors.js");
+
+let lines;
+
 module.exports = function parser(raw) {
-  let lines = raw.split(/\n/g);
+  lines = raw.split(/\n/g);
   let terms = get_terms(raw);
-  // console.log(terms);
 
   let tree = {
-    instructions: []
+    terms: []
   };
-  function parse_body(sub_terms, branch, {is_tuple, is_array}) {
-    let n = 0;
-    while (sub_terms[n]) {
-      let current_term = sub_terms[n];
-      function match(term) {
-        // console.log("> ", term.word);
-        let match = null;
-        for (let matcher of MATCHERS) {
-          match = matcher.match(term);
-          if (match) break;
-        }
-        return match;
-      }
-
-      let matched_term = match(current_term);
-
-      if (matched_term) {
-        // console.log(matched_term);
-        switch (matched_term.matcher) {
-          case MATCHERS.SINGLE_COMMENT:
-            let current_line = current_term.line;
-            while (sub_terms[++n].line === current_line);
-            n--;
-            break;
-          case MATCHERS.PATTERN:
-            branch.instructions.push({
-              name: current_term.word,
-              kind: KINDS.PATTERN
-            });
-            break;
-          case MATCHERS.TUPLE_START:
-            let twig = {
-              instructions: [],
-              kind: KINDS.TUPLE
-            }
-            n += parse_body(sub_terms.slice(++n), twig, {is_tuple: true});
-            branch.instructions.push(twig);
-            break;
-          case MATCHERS.TUPLE_END:
-            if (is_tuple) {
-              return n + 1;
-            } else {
-              throw new Error(`Found tuple end while not being in a tuple: (${current_term.line}:${current_term.char})`);
-            }
-            break;
-          case MATCHERS.STRING:
-            let start = current_term.char;
-            let end = null;
-            while (sub_terms[++n]) {
-              let m = match(sub_terms[n]);
-              if (m && m.matcher === MATCHERS.STRING) {
-                end = m.input.char;
-                break;
-              };
-            }
-            if (end === null) {
-              throw new Error(`Unmatched string quote at (${current_term.line}:${current_term.char})`);
-            }
-            let str = lines[current_term.line].slice(start + 1, end + 1);
-            branch.instructions.push({
-              kind: KINDS.STRING,
-              string: str
-            });
-            break;
-        }
-      } else {
-        // TODO: uncomment the following line
-        // throw new Error(`Unrecognized term: ${current_term.word} at (${current_term.line}:${current_term.char})`);
-      }
-
-      n++;
-    }
-    return n;
-  }
 
   parse_body(terms, tree, {});
   // console.log(JSON.stringify(tree, " ", 2));
   return tree;
+};
+
+function parse_body(sub_terms, branch, {is_tuple, is_array}) {
+  /*? Recursive function which parses the body of the code
+      It tries to match every term against a set of symbol matchers (MATCHERS)
+      Once this is done, it processes them.
+  */
+
+  let n = 0;
+  while (sub_terms[n]) {
+    let current_term = sub_terms[n];
+    let matched_term = match_term(current_term);
+
+    if (matched_term) { // This bit processes the matched term
+      switch (matched_term.matcher) {
+        case MATCHERS.SINGLE_COMMENT: // Skips to the next line
+          let current_line = current_term.line;
+          while (sub_terms[++n].line === current_line);
+          n--;
+
+          break;
+        case MATCHERS.PATTERN: // Registers a pattern instruction
+          branch.terms.push({
+            name: current_term.word,
+            kind: KINDS.PATTERN,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
+        case MATCHERS.TUPLE_START: // Calls parse_body as a tuple
+          let twig = {
+            terms: [],
+            kind: KINDS.TUPLE,
+            line: current_term.line,
+            char: current_term.char
+          };
+          n += parse_body(sub_terms.slice(++n), twig, {is_tuple: true});
+          branch.terms.push(twig);
+
+          break;
+        case MATCHERS.TUPLE_END: // Returns parse_body if we are a tuple
+          if (is_tuple) {
+            mangle(branch, {is_tuple, is_array});
+            return n + 1;
+          } else {
+            throw new CompileError(`Found tuple end without being in a tuple.`, current_term.line, current_term.char);
+          }
+
+          break;
+        case MATCHERS.STRING: // Looks for the next "string" character and grabs the stuff between the both of them
+          let start = current_term.char;
+          let end = null;
+          while (sub_terms[++n]) {
+            let m = match_term(sub_terms[n]);
+            if (m && m.matcher === MATCHERS.STRING) {
+              end = m.input.char;
+              break;
+            };
+          }
+
+          if (end === null) {
+            throw new CompileError(`Unmatched string quote`, current_term.line, current_term.char);
+          }
+
+          let str = parse_string_escapes(lines[current_term.line].slice(start + 1, end));
+          branch.terms.push({
+            kind: KINDS.STRING,
+            string: str,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
+
+        case MATCHERS.SYMBOL: // Adds this symbol to the terms
+          branch.terms.push({
+            name: current_term.word,
+            kind: KINDS.SYMBOL,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
+        case MATCHERS.DEFINE: // If the last instruction was a tuple, looks for the last two terms, otherwise only looks for the last one.
+          // It then pops them off from the instruction set and puts them together in an instruction
+          branch.terms.push({
+            kind: KINDS.DEFINE,
+            line: current_term.line,
+            char: current_term.char
+          })
+
+          break;
+        case MATCHERS.NEXT_ELEMENT:
+          branch.terms.push({
+            kind: KINDS.NEXT_ELEMENT,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
+      }
+    } else {
+      // TODO: uncomment the following line
+      // throw new CompileError(`Unrecognized term: ${current_term.word} at (${current_term.line}:${current_term.char})`);
+    }
+
+    n++;
+  }
+
+  mangle(branch, {is_tuple, is_array});
+
+  return n;
 }
 
 function get_terms(raw) {
@@ -91,7 +136,7 @@ function get_terms(raw) {
 
   let lines = raw.split(/\r?\n/g);
   let terms = lines.reduce((acc, line, i) => {
-    let words = line.split(/\s|(?=[\.\+\-\*\/:;,=<>'#\(\)\[\]\{\}"](?:[^\/]|$))(?<=[^\/]|^)|(?<=[\.\+\-\*\/:;,=<>\(\)\[\]\{\}"])(?!\/)/g);
+    let words = line.split(/(?=\s)|(?=[\.\+\-\*\/:;,=<>'#\(\)\[\]\{\}"](?:[^\/]|$))(?<=[^\/\\]|^)|(?<=[\.\+\-\*\/:;,=<>\(\)\[\]\{\}"])(?!\/)/g);
     let char_count = 0;
     let parsed_words = words.map((word) => {
       let old_char_count = char_count;
@@ -102,10 +147,25 @@ function get_terms(raw) {
         char: old_char_count
       };
     });
-    return acc.concat(parsed_words);
+    return acc.concat(parsed_words).filter(term => !/\s/.exec(term.word));
   }, []);
 
   return terms;
+}
+
+function match_term(term) {
+  let match = null;
+  for (let matcher of MATCHERS) {
+    match = matcher.match(term);
+    if (match) break;
+  }
+  return match;
+}
+
+function parse_string_escapes(str) {
+  return str.replace(/\\"/g, '"')
+    .replace(/\\n/g, '\n')
+    .replace(/\\\\/g, '\\');
 }
 
 let MATCHERS = [];
@@ -148,11 +208,7 @@ new TermMatcher("TUPLE_START", matches("("), 900).append();
 new TermMatcher("TUPLE_END", matches(")"), 900).append();
 new TermMatcher("NEXT_ELEMENT", matches(";"), 900).append();
 new TermMatcher("STRING", matches('"'), 800).append();
+new TermMatcher("DEFINE", matches(':'), 900).append();
+new TermMatcher("SYMBOL", (str) => /^\w+$/.exec(str), -100).append();
 
 MATCHERS = MATCHERS.sort((a, b) => a.priority - b.priority);
-const KINDS = module.exports.KINDS = {
-  TUPLE: Symbol("TUPLE"),
-  STRING: Symbol("STRING"),
-  PATTERN: Symbol("PATTERN"),
-  NEXT_ELEMENT: Symbol("NEXT_ELEMENT")
-};
