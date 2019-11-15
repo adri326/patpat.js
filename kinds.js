@@ -4,6 +4,7 @@ const KINDS = module.exports = {
   NUMBER: Symbol("NUMBER"),
   BOOLEAN: Symbol("BOOLEAN"),
   PATTERN: Symbol("PATTERN"),
+  ARRAY: Symbol("ARRAY"),
   NEXT_ELEMENT: Symbol("NEXT_ELEMENT"),
   DEFINE_SYMBOL: Symbol("DEFINE_SYMBOL"),
   DEFINE_PATTERN: Symbol("DEFINE_PATTERN"),
@@ -11,6 +12,8 @@ const KINDS = module.exports = {
   DEFINE: Symbol("DEFINE"),
   SYMBOL: Symbol("SYMBOL"),
   OPERATOR: Symbol("OPERATOR"),
+  ARROW: Symbol("ARROW"),
+
   OP_ADD: Symbol("OP_ADD"),
   OP_SUB: Symbol("OP_SUB"),
   OP_MUL: Symbol("OP_MUL"),
@@ -19,9 +22,35 @@ const KINDS = module.exports = {
   OP_OR: Symbol("OP_OR"),
   OP_NOT: Symbol("OP_NOT"),
 
-  ARRAY: Symbol("ARRAY"),
-
   FUNCTION_CALL: Symbol("FUNCTION_CALL"),
   PATTERN_CALL: Symbol("PATTERN_CALL"),
-  EXPRESSION: Symbol("EXPRESSION")
+  EXPRESSION: Symbol("EXPRESSION"),
+  UNARY_EXPRESSION: Symbol("UNARY_EXPRESSION"),
+  FUNCTION: Symbol("FUNCTION"),
+  BLOCK: Symbol("BLOCK")
 };
+
+KINDS.BINARY_OPS = [
+  KINDS.OP_ADD,
+  KINDS.OP_MUL,
+  KINDS.OP_SUB,
+  KINDS.OP_DIV,
+  KINDS.OP_AND,
+  KINDS.OP_OR
+];
+
+KINDS.UNARY_OPS = [
+  KINDS.OP_NOT
+];
+
+KINDS.VALID_EXP_TERMS = [
+  KINDS.STRING,
+  KINDS.NUMBER,
+  KINDS.BOOLEAN,
+  KINDS.ARRAY,
+  KINDS.SYMBOL,
+  KINDS.TUPLE,
+  KINDS.FUNCTION_CALL,
+  KINDS.PATTERN_CALL,
+  KINDS.EXPRESSION
+];

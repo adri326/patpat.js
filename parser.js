@@ -13,7 +13,7 @@ module.exports = function parser(raw) {
     terms: []
   };
 
-  parse_body(terms, tree, {ctx_kind: "file"});
+  parse_body(terms, tree, {ctx_kind: "file", is_block: true});
   // console.log(JSON.stringify(tree, " ", 2));
   return tree;
 };
@@ -30,6 +30,7 @@ function parse_body(sub_terms, branch, options) {
     let matched_term = match_term(current_term);
 
     if (matched_term) { // This bit processes the matched term
+      let twig;
       switch (matched_term.matcher) {
         case MATCHERS.SINGLE_COMMENT: // Skips to the next line
           let current_line = current_term.line;
@@ -47,7 +48,7 @@ function parse_body(sub_terms, branch, options) {
 
           break;
         case MATCHERS.TUPLE_START: // Calls parse_body as a tuple
-          let twig = {
+          twig = {
             terms: [],
             kind: KINDS.TUPLE,
             line: current_term.line,
@@ -63,6 +64,26 @@ function parse_body(sub_terms, branch, options) {
             return n + 1;
           } else {
             throw new CompileError(`Found tuple end without being in a tuple.`, current_term.line, current_term.char);
+          }
+
+          break;
+        case MATCHERS.BLOCK_START:
+          twig = {
+            terms: [],
+            kind: KINDS.BLOCK,
+            line: current_term.line,
+            char: current_term.char
+          };
+          n += parse_body(sub_terms.slice(++n), twig, {is_block: true, ctx_kind: "block"});
+          branch.terms.push(twig);
+
+          break;
+        case MATCHERS.BLOCK_END:
+          if (options.is_block) {
+            mangle(branch, options);
+            return n + 1;
+          } else {
+            throw new CompileError("Found block end without being in a block.", current_term.line, current_term.char);
           }
 
           break;
@@ -134,6 +155,23 @@ function parse_body(sub_terms, branch, options) {
           });
 
           break;
+        case MATCHERS.BOOLEAN:
+          branch.terms.push({
+            kind: KINDS.BOOLEAN,
+            line: current_term.line,
+            char: current_term.char,
+            state: current_term.word === "true"
+          });
+
+          break;
+        case MATCHERS.ARROW:
+          branch.terms.push({
+            kind: KINDS.ARROW,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
       }
     } else {
       // TODO: uncomment the following line
@@ -153,7 +191,7 @@ function get_terms(raw) {
 
   let lines = raw.split(/\r?\n/g);
   let terms = lines.reduce((acc, line, i) => {
-    let words = line.split(/(?=\s)|(?<=\s)|(?=[\.\+\-\*\/:;,=<>'#\(\)\[\]\{\}"!])(?<=[^\/\\]|^)|(?<=[\.\+\-\*\/:;,=<>\(\)\[\]\{\}"])(?!\/)|(?=&)(?<=[^&])|(?=\|)(?<=[^|])/g);
+    let words = line.split(/(?=\s)|(?<=\s)|(?=[\.\+\-\*\/:;,=<'#\(\)\[\]\{\}"!])(?<=[^\/\\]|^)|(?<=[\.\+\-\*\/:;,<>\(\)\[\]\{\}"!])(?!\/)|(?=&)(?<=[^&])|(?=\|)(?<=[^|])|(?<==)(?!>)|(?=>)(?<=[^=])/g);
     let char_count = 0;
     let parsed_words = words.map((word) => {
       let old_char_count = char_count;
@@ -220,16 +258,19 @@ function matches(str) {
 }
 
 new TermMatcher("SINGLE_COMMENT", matches("//"), 1000).append();
-new TermMatcher("PATTERN", (str) => /^'\w+$/.exec(str), 200).append();
+new TermMatcher("PATTERN", (str) => /^['#]\w+$/.exec(str), 200).append();
 new TermMatcher("TUPLE_START", matches("("), 900).append();
 new TermMatcher("TUPLE_END", matches(")"), 900).append();
+new TermMatcher("BLOCK_START", matches("{"), 900).append();
+new TermMatcher("BLOCK_END", matches("}"), 900).append();
 new TermMatcher("NEXT_ELEMENT", matches(";"), 900).append();
 new TermMatcher("STRING", matches('"'), 800).append();
-new TermMatcher("DEFINE", matches(':'), 900).append();
+new TermMatcher("DEFINE", matches(":"), 900).append();
 new TermMatcher("SYMBOL", (str) => /^\w+$/.exec(str), -100).append();
 new TermMatcher("OPERATOR", (str) => /^(?:[+\-*\/!]|&&|\|\|)$/.exec(str), 700).append();
 new TermMatcher("NUMBER", (str) => /^-?\d+(?:\.\d*)?$/.exec(str), 800).append();
-
+new TermMatcher("BOOLEAN", (str) => str === "true" || str === "false", 500).append();
+new TermMatcher("ARROW", matches("=>"), 1200).append();
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
 OPERATORS = {

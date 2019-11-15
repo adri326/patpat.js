@@ -1,4 +1,5 @@
 const KINDS = require("./kinds.js");
+const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {CompileError} = require("./errors.js");
 
 //? This module takes all of the terms given by the parser and puts them together. It does this through different passes
@@ -9,7 +10,9 @@ module.exports = function mangle_body(branch, options) {
   branch.indexes = [];
 
   // console.log(branch);
+  mangle_functions(branch, options);
   mangle_calls(branch, options);
+  mangle_unary_expressions(branch, options);
   mangle_expressions(branch, options);
   mangle_define(branch, options);
 
@@ -56,14 +59,21 @@ function mangle_define(branch) {
           right
         };
       } else if (left.kind === KINDS.PATTERN) {
+        if (right.kind !== KINDS.FUNCTION) {
+          throw new CompileError("Pattern definitions must be followed by a function", right.line, right.char);
+        }
         instruction = {
           kind: KINDS.DEFINE_PATTERN,
-          left,
-          right
+          name: left.name,
+          args: right.args,
+          body: right.body,
+          line: left.line,
+          char: left.char
         }
       }
 
       insert(branch, instruction, n - 1, 3);
+      n--;
     }
   }
 }
@@ -108,8 +118,46 @@ function mangle_calls(branch) {
   }
 }
 
+function mangle_unary_expressions(branch, {ctx_kind}) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (
+      branch.instructions[n].kind === KINDS.OPERATOR
+      && UNARY_OPS.includes(branch.instructions[n].operator)
+    ) {
+      if (n === branch.instructions.length - 1) {
+        throw new CompileError("Operator at end of " + ctx_kind, branch.instructions[n].line, branch.instructions[n].char);
+      }
+      let unaries = [branch.instructions[n].operator];
+      let o;
+
+      for (o = n + 1; o < branch.instructions.length; o++) {
+        if (
+          branch.instructions[o].kind === KINDS.OPERATOR
+          && UNARY_OPS.includes(branch.instructions[o].operator)
+        ) {
+          unaries.push(branch.instructions[o].operator);
+        } else break;
+      }
+
+      if (!VALID_EXP_TERMS.includes(branch.instructions[o].kind)) {
+        throw new CompileError(
+          "Invalid term following expression",
+          branch.instructions[o].line,
+          branch.instructions[o].char
+        );
+      }
+
+      insert(branch, {
+        kind: KINDS.EXPRESSION,
+        steps: [branch.instructions[o], ...unaries],
+        line: branch.instructions[n].line,
+        char: branch.instructions[n].char
+      }, n, o - n + 1);
+    }
+  }
+}
+
 function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
-  const VALID_TERMS = [KINDS.STRING, KINDS.NUMBER, KINDS.BOOLEAN, KINDS.ARRAY, KINDS.SYMBOL, KINDS.TUPLE, KINDS.FUNCTION_CALL, KINDS.PATTERN_CALL];
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.OPERATOR) {
       if (n === 0) {
@@ -120,10 +168,10 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
 
       let operator = branch.instructions[n].operator;
       let elements = [branch.instructions[n - 1], branch.instructions[n + 1]];
-      if (!VALID_TERMS.includes(elements[0].kind)) {
+      if (!VALID_EXP_TERMS.includes(elements[0].kind)) {
         throw new CompileError("Invalid term preceding operator", branch.instructions[n - 1].line, branch.instructions[n - 1].char);
       }
-      if (!VALID_TERMS.includes(elements[1].kind)) {
+      if (!VALID_EXP_TERMS.includes(elements[1].kind)) {
         throw new CompileError("Invalid term following operator", branch.instructions[n + 1].line, branch.instructions[n + 1].char);
       }
 
@@ -137,7 +185,7 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
           if (branch.instructions[o].operator !== branch.instructions[n].operator) {
             throw new CompileError("Operator precedence is not supported", branch.instructions[o].line, branch.instructions[o].char);
           }
-          if (!VALID_TERMS.includes(branch.instructions[o + 1].kind)) {
+          if (!VALID_EXP_TERMS.includes(branch.instructions[o + 1].kind)) {
             throw new CompileError("Invalid term following operator", branch.instructions[o + 1].line, branch.instructions[o + 1].char);
           }
           elements.push(branch.instructions[o + 1]);
@@ -151,6 +199,8 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
             steps = steps.concat(element.instructions[0].steps);
             continue;
           }
+        } else if (element.kind === KINDS.EXPRESSION) {
+          steps = steps.concat(element.steps);
         }
         steps.push(element);
       }
@@ -163,6 +213,57 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
         char: branch.instructions[n].char,
         steps
       }, n - 1, steps.length);
+      n--;
+    }
+  }
+}
+
+function mangle_functions(branch) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind === KINDS.ARROW) {
+      if (branch.instructions[n - 1].kind !== KINDS.TUPLE && branch.instructions[n - 1].kind !== KINDS.ARRAY) {
+        throw new CompileError(
+          "Invalid term preceding arrow (should be a tuple or an instruction)",
+          branch.instructions[n - 1].line,
+          branch.instructions[n - 1].char
+        );
+      }
+      if (branch.instructions[n + 1].kind !== KINDS.BLOCK && branch.instructions[n + 1].kind !== KINDS.TUPLE) {
+        throw new CompileError(
+          "Invalid term following arrow (should be a block or a tuple)",
+          branch.instructions[n + 1].line,
+          branch.instructions[n + 1].char
+        );
+      }
+
+      let args = [];
+
+      for (let instruction of branch.instructions[n - 1].instructions) {
+        if (instruction.kind === KINDS.SYMBOL) {
+          args.push({
+            ...instruction,
+            symbolic: false
+          });
+        } else if (instruction.kind === KINDS.NEXT_ELEMENT) {}
+        else {
+          throw new CompileError("Invalid element in function argument tuple: " + instruction.kind.description, instruction.line, instruction.char);
+        }
+        /* else if (instruction.kind === KINDS.EXPRESSION && instruction.operator === KINDS.SYMBOLIC_OPERATOR && instruction.steps.length === 2) {
+          args.push({
+            name: instruction.steps[0],
+            symbolic: true
+          });
+        } */
+      }
+
+      // TODO: more checks, as this obviously needs more checks. (1, 2; 3) is not a valid arg tuple.
+
+      insert(branch, {
+        kind: KINDS.FUNCTION,
+        args,
+        body: branch.instructions[n + 1]
+      }, n - 1, 3);
+      n--;
     }
   }
 }
