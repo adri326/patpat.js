@@ -9,6 +9,13 @@ prelude.patterns = {
     _execute: (args) => {
       console.log(...args);
     }
+  },
+  "'version": {
+    kind: KINDS.PATTERN,
+    instructions: [{
+      kind: KINDS.STRING,
+      string: "0.0.2"
+    }]
   }
 }
 

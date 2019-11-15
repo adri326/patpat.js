@@ -90,7 +90,6 @@ function parse_body(sub_terms, branch, {is_tuple, is_array}) {
           });
 
           break;
-
         case MATCHERS.SYMBOL: // Adds this symbol to the terms
           branch.terms.push({
             name: current_term.word,
@@ -117,6 +116,24 @@ function parse_body(sub_terms, branch, {is_tuple, is_array}) {
           });
 
           break;
+        case MATCHERS.OPERATOR:
+          branch.terms.push({
+            kind: KINDS.OPERATOR,
+            line: current_term.line,
+            char: current_term.char,
+            operator: OPERATORS[current_term.word]
+          });
+
+          break;
+        case MATCHERS.NUMBER:
+          branch.terms.push({
+            kind: KINDS.NUMBER,
+            line: current_term.line,
+            char: current_term.char,
+            number: +current_term.word
+          });
+
+          break;
       }
     } else {
       // TODO: uncomment the following line
@@ -136,7 +153,7 @@ function get_terms(raw) {
 
   let lines = raw.split(/\r?\n/g);
   let terms = lines.reduce((acc, line, i) => {
-    let words = line.split(/(?=\s)|(?=[\.\+\-\*\/:;,=<>'#\(\)\[\]\{\}"](?:[^\/]|$))(?<=[^\/\\]|^)|(?<=[\.\+\-\*\/:;,=<>\(\)\[\]\{\}"])(?!\/)/g);
+    let words = line.split(/(?=\s)|(?<=\s)|(?=[\.\+\-\*\/:;,=<>'#\(\)\[\]\{\}"!])(?<=[^\/\\]|^)|(?<=[\.\+\-\*\/:;,=<>\(\)\[\]\{\}"])(?!\/)|(?=&)(?<=[^&])|(?=\|)(?<=[^|])/g);
     let char_count = 0;
     let parsed_words = words.map((word) => {
       let old_char_count = char_count;
@@ -147,7 +164,7 @@ function get_terms(raw) {
         char: old_char_count
       };
     });
-    return acc.concat(parsed_words).filter(term => !/\s/.exec(term.word));
+    return acc.concat(parsed_words).filter(term => !/^\s+$/.exec(term.word));
   }, []);
 
   return terms;
@@ -210,5 +227,17 @@ new TermMatcher("NEXT_ELEMENT", matches(";"), 900).append();
 new TermMatcher("STRING", matches('"'), 800).append();
 new TermMatcher("DEFINE", matches(':'), 900).append();
 new TermMatcher("SYMBOL", (str) => /^\w+$/.exec(str), -100).append();
+new TermMatcher("OPERATOR", (str) => /^(?:[+\-*\/!]|&&|\|\|)$/.exec(str), 700).append();
+new TermMatcher("NUMBER", (str) => /^\d+(?:\.\d*)?$/.exec(str), 800).append();
 
-MATCHERS = MATCHERS.sort((a, b) => a.priority - b.priority);
+
+MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
+OPERATORS = {
+  "+": KINDS.OP_ADD,
+  "-": KINDS.OP_SUB,
+  "*": KINDS.OP_MUL,
+  "/": KINDS.OP_DIV,
+  "||": KINDS.OP_OR,
+  "&&": KINDS.OP_AND,
+  "!": KINDS.OP_NOT
+}

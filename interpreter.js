@@ -1,15 +1,18 @@
 const KINDS = require("./kinds.js");
 const {RuntimeError} = require("./errors.js");
 
-module.exports = function interpreter(tree, stack) {
-  // console.log(JSON.stringify(tree, " ", 2));
-  let context_stack = [...stack, {patterns: {}, symbols: {}}];
-  for (let n = 0; n < tree.instructions.length; n++) {
-    let last_context = context_stack[context_stack.length - 1];
+const interpreter = module.exports = function interpreter(branch, stack) {
+  
+  // console.log(JSON.stringify(branch, " ", 2));
+  let context_stack = [...stack, {patterns: {}, symbols: {}, last_value: null}];
+  let last_context = context_stack[context_stack.length - 1];
+  for (let n = 0; n < branch.instructions.length; n++) {
 
-    let result = interprete_instruction(tree.instructions[n], context_stack, tree.instructions.slice(n+1));
+    let result = interprete_instruction(branch.instructions[n], context_stack, branch.instructions.slice(n+1));
     last_context.last_value = result;
   }
+
+  return last_context.last_value;
 }
 
 function find_pattern_in_stack(name, context_stack) {
@@ -24,22 +27,11 @@ function find_pattern_in_stack(name, context_stack) {
 function interprete_instruction(instruction, context_stack, next_instructions) {
   let last_context = context_stack[context_stack.length - 1];
 
-  if (instruction.kind === KINDS.PATTERN_CALL) {
-    let pattern = find_pattern_in_stack(instruction.pattern.name, context_stack);
-    if (pattern) {
-      if (typeof pattern._execute === "function") {
-        let args = interprete_instruction(instruction.args, context_stack, next_instructions);
-        // console.log("!>", args);
-        let result = pattern._execute(args);
-        return result;
-      } else {
-        // TODO
-        throw new Error("Unimplemented");
-      }
-    } else {
-      throw new RuntimeError(`Pattern not found: ${instruction.pattern.name}`, instruction.line, instruction.char);
-    }
-  } else if (instruction.kind === KINDS.DEFINE_SYMBOL) {
+  if (EXECUTORS.hasOwnProperty(instruction.kind)) {
+    return EXECUTORS[instruction.kind](instruction, context_stack, next_instructions);
+  }
+
+  if (instruction.kind === KINDS.DEFINE_SYMBOL) {
     let value = interprete_instruction(instruction.right, context_stack, next_instructions);
 
     last_context.symbols[instruction.left.name] = value;
@@ -72,3 +64,23 @@ function interprete_instruction(instruction, context_stack, next_instructions) {
     return instruction.string;
   }
 }
+
+const EXECUTORS = {};
+
+EXECUTORS[KINDS.PATTERN_CALL] = function pattern_call(instruction, context_stack, next_instructions) {
+  let pattern = find_pattern_in_stack(instruction.pattern.name, context_stack);
+
+  if (pattern) {
+    if (typeof pattern._execute === "function") {
+      let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+      // console.log("!>", args);
+      let result = pattern._execute(args);
+      return result;
+    } else {
+      let result = interpreter(pattern, context_stack);
+      return result;
+    }
+  } else {
+    throw new RuntimeError(`Pattern not found: ${instruction.pattern.name}`, instruction.line, instruction.char);
+  }
+};
