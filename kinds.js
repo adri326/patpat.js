@@ -2,6 +2,7 @@ const KINDS = module.exports = {
   TUPLE: Symbol("TUPLE"),
   STRING: Symbol("STRING"),
   NUMBER: Symbol("NUMBER"),
+  BOOLEAN: Symbol("BOOLEAN"),
   PATTERN: Symbol("PATTERN"),
   NEXT_ELEMENT: Symbol("NEXT_ELEMENT"),
   DEFINE_SYMBOL: Symbol("DEFINE_SYMBOL"),
@@ -17,7 +18,7 @@ const KINDS = module.exports = {
   OP_AND: Symbol("OP_AND"),
   OP_OR: Symbol("OP_OR"),
   OP_NOT: Symbol("OP_NOT"),
-  
+
   ARRAY: Symbol("ARRAY"),
 
   FUNCTION_CALL: Symbol("FUNCTION_CALL"),

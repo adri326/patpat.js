@@ -13,12 +13,12 @@ module.exports = function parser(raw) {
     terms: []
   };
 
-  parse_body(terms, tree, {});
+  parse_body(terms, tree, {ctx_kind: "file"});
   // console.log(JSON.stringify(tree, " ", 2));
   return tree;
 };
 
-function parse_body(sub_terms, branch, {is_tuple, is_array}) {
+function parse_body(sub_terms, branch, options) {
   /*? Recursive function which parses the body of the code
       It tries to match every term against a set of symbol matchers (MATCHERS)
       Once this is done, it processes them.
@@ -53,13 +53,13 @@ function parse_body(sub_terms, branch, {is_tuple, is_array}) {
             line: current_term.line,
             char: current_term.char
           };
-          n += parse_body(sub_terms.slice(++n), twig, {is_tuple: true});
+          n += parse_body(sub_terms.slice(++n), twig, {is_tuple: true, ctx_kind: "tuple"});
           branch.terms.push(twig);
 
           break;
         case MATCHERS.TUPLE_END: // Returns parse_body if we are a tuple
-          if (is_tuple) {
-            mangle(branch, {is_tuple, is_array});
+          if (options.is_tuple) {
+            mangle(branch, options);
             return n + 1;
           } else {
             throw new CompileError(`Found tuple end without being in a tuple.`, current_term.line, current_term.char);
@@ -143,7 +143,7 @@ function parse_body(sub_terms, branch, {is_tuple, is_array}) {
     n++;
   }
 
-  mangle(branch, {is_tuple, is_array});
+  mangle(branch, options);
 
   return n;
 }
@@ -228,7 +228,7 @@ new TermMatcher("STRING", matches('"'), 800).append();
 new TermMatcher("DEFINE", matches(':'), 900).append();
 new TermMatcher("SYMBOL", (str) => /^\w+$/.exec(str), -100).append();
 new TermMatcher("OPERATOR", (str) => /^(?:[+\-*\/!]|&&|\|\|)$/.exec(str), 700).append();
-new TermMatcher("NUMBER", (str) => /^\d+(?:\.\d*)?$/.exec(str), 800).append();
+new TermMatcher("NUMBER", (str) => /^-?\d+(?:\.\d*)?$/.exec(str), 800).append();
 
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
