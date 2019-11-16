@@ -172,6 +172,22 @@ function parse_body(sub_terms, branch, options) {
           });
 
           break;
+        case MATCHERS.LET:
+          branch.terms.push({
+            kind: KINDS.LET,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
+        case MATCHERS.SEPARATOR:
+          branch.terms.push({
+            kind: KINDS.SEPARATOR,
+            line: current_term.line,
+            char: current_term.char
+          });
+
+          break;
       }
     } else {
       // TODO: uncomment the following line
@@ -271,6 +287,8 @@ new TermMatcher("OPERATOR", (str) => /^(?:[+\-*\/!]|&&|\|\|)$/.exec(str), 700).a
 new TermMatcher("NUMBER", (str) => /^-?\d+(?:\.\d*)?$/.exec(str), 800).append();
 new TermMatcher("BOOLEAN", (str) => str === "true" || str === "false", 500).append();
 new TermMatcher("ARROW", matches("=>"), 1200).append();
+new TermMatcher("LET", matches("let"), 600).append();
+new TermMatcher("SEPARATOR", matches(","), 700).append();
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
 OPERATORS = {

@@ -13,6 +13,8 @@ const KINDS = module.exports = {
   SYMBOL: Symbol("SYMBOL"),
   OPERATOR: Symbol("OPERATOR"),
   ARROW: Symbol("ARROW"),
+  LET: Symbol("LET"),
+  SEPARATOR: Symbol("SEPARATOR"),
 
   OP_ADD: Symbol("OP_ADD"),
   OP_SUB: Symbol("OP_SUB"),
@@ -27,7 +29,8 @@ const KINDS = module.exports = {
   EXPRESSION: Symbol("EXPRESSION"),
   UNARY_EXPRESSION: Symbol("UNARY_EXPRESSION"),
   FUNCTION: Symbol("FUNCTION"),
-  BLOCK: Symbol("BLOCK")
+  BLOCK: Symbol("BLOCK"),
+  DECLARE_SYMBOL: Symbol("DECLARE_SYMBOL")
 };
 
 KINDS.BINARY_OPS = [

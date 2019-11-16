@@ -106,14 +106,36 @@ EXECUTORS[KINDS.TUPLE] = function tuple(instruction, context_stack) {
   return elements;
 };
 
-EXECUTORS[KINDS.DEFINE_SYMBOL] = function set_symbol(instruction, context_stack) {
+EXECUTORS[KINDS.DEFINE_SYMBOL] = function set_symbol(instruction, context_stack, next_instructions) {
   for (let o = context_stack.length - 1; o >= 0; o--) {
-    if (context_stack[o].symbols.hasOwnProperty(instruction.left)) {
-      context_stack[o].symbols[instruction.left] = interprete_instruction(instruction.right, context_stack, next_instructions);
-      break;
+    if (context_stack[o].symbols.hasOwnProperty(instruction.left.name)) {
+      let old_value = context_stack[o].symbols[instruction.left.name];
+      context_stack[o].symbols[instruction.left.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+      return old_value;
     }
   }
+  throw new RuntimeError(
+    "No definition of " + instruction.left.name + " found",
+    instruction.line,
+    instruction.char
+  );
 };
+
+EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_stack, next_instructions) {
+  let last_context = context_stack[context_stack.length - 1];
+  if (last_context.symbols.hasOwnProperty(instruction.name)) {
+    throw new RuntimeError(
+      "Duplicate declaration of " + instruction.name,
+      instruction.line,
+      instruction.char
+    );
+  }
+  if (instruction.right === null) {
+    last_context.symbols[instruction.name] = null;
+  } else {
+    last_context.symbols[instruction.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+  }
+}
 
 const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expression(instruction, context_stack, next_instructions) {
   let stack = [];

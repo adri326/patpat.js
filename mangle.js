@@ -15,7 +15,9 @@ module.exports = function mangle_body(branch, options) {
   mangle_unary_expressions(branch, options);
   mangle_expressions(branch, options);
   mangle_define(branch, options);
+  mangle_declaration(branch, options);
 
+  strip_separators(branch);
 
   if (options.is_tuple) {
     branch.length = branch.instructions.filter((instruction) => instruction.kind === KINDS.NEXT_ELEMENT).length + 1;
@@ -24,8 +26,57 @@ module.exports = function mangle_body(branch, options) {
   // console.log(branch);
 }
 
-function mangle_define(branch) {
+function mangle_declaration(branch, {ctx_kind, is_tuple, is_array}) {
+  // console.log(branch);
   for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind === KINDS.LET) {
+      if (n === branch.instructions.length - 1) {
+        throw new CompileError(
+          "LET at end of " + ctx_kind,
+          branch.instructions[n].line,
+          branch.instructions[n].char
+        );
+      } else if (is_tuple || is_array) {
+        throw new CompileError(
+          "Cannot have LET instructions in " + ctx_kind,
+          branch.instructions[n].line,
+          branch.instructions[n].char
+        );
+      }
+
+      if (branch.instructions[n + 1].kind === KINDS.SYMBOL) {
+        insert(branch, {
+          kind: KINDS.DECLARE_SYMBOL,
+          name: branch.instructions[n + 1].name,
+          right: null,
+          line: branch.instructions[n].line,
+          char: branch.instructions[n].char
+        }, n, 2);
+      } else if (branch.instructions[n + 1].kind === KINDS.DEFINE_SYMBOL) {
+        insert(branch, {
+          kind: KINDS.DECLARE_SYMBOL,
+          name: branch.instructions[n + 1].left.name,
+          right: branch.instructions[n + 1].right,
+          line: branch.instructions[n].line,
+          char: branch.instructions[n].char
+        }, n, 2);
+      } else if (branch.instructions[n + 1].kind === KINDS.TUPLE) {
+        throw new Error("Unimplemented");
+      } else {
+        throw new CompileError(
+          "Invalid term following a LET instruction",
+          branch.instructions[n + 1].line,
+          branch.instructions[n + 1].char
+        );
+      }
+    }
+  }
+}
+
+function mangle_define(branch) {
+  // this has to sweep from right to left, as to handle this kind of assignement:
+  // a: b: a
+  for (let n = branch.instructions.length - 1; n >= 0; n--) {
     if (branch.instructions[n].kind === KINDS.DEFINE) {
       if (n === 0) {
         throw new CompileError(
@@ -266,6 +317,10 @@ function mangle_functions(branch) {
       n--;
     }
   }
+}
+
+function strip_separators(branch) {
+  branch.instructions = branch.instructions.filter(x => x.kind !== KINDS.SEPARATOR);
 }
 
 function insert(branch, instruction, source, length) {
