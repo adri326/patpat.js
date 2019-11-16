@@ -7,7 +7,6 @@ const {CompileError} = require("./errors.js");
 
 module.exports = function mangle_body(branch, options) {
   branch.instructions = branch.terms.concat([]);
-  branch.indexes = [];
 
   // console.log(branch);
   mangle_functions(branch, options);
@@ -113,6 +112,9 @@ function mangle_define(branch) {
         if (right.kind !== KINDS.FUNCTION) {
           throw new CompileError("Pattern definitions must be followed by a function", right.line, right.char);
         }
+        if (left.name.startsWith("#")) {
+          throw new CompileError("Patterns starting with # are reserved to the compiler. Please use ' instead.", left.line, left.char)
+        }
         instruction = {
           kind: KINDS.DEFINE_PATTERN,
           name: left.name,
@@ -124,7 +126,7 @@ function mangle_define(branch) {
       }
 
       insert(branch, instruction, n - 1, 3);
-      n--;
+      n++;
     }
   }
 }
@@ -133,7 +135,9 @@ function mangle_calls(branch) {
   for (let n = 0; n < branch.instructions.length - 1; n++) {
     let c_kind = branch.instructions[n].kind;
     if (
-      c_kind === KINDS.TUPLE && c_kind.length === 1
+      c_kind === KINDS.TUPLE && branch.instructions[n].length === 1
+      || c_kind === KINDS.FUNCTION_CALL
+      || c_kind === KINDS.PATTERN_CALL
       || c_kind === KINDS.SYMBOL
       || c_kind === KINDS.PATTERN
     ) {
@@ -156,7 +160,7 @@ function mangle_calls(branch) {
         } else {
           instruction = {
             kind: KINDS.FUNCTION_CALL,
-            function: branch.instructions[n],
+            fn: branch.instructions[n],
             args: branch.instructions[n + 1],
             line: branch.instructions[n].line,
             char: branch.instructions[n].char
@@ -164,6 +168,7 @@ function mangle_calls(branch) {
         }
 
         insert(branch, instruction, n, 2);
+        n--;
       }
     }
   }

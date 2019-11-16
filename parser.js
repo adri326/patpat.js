@@ -274,7 +274,7 @@ function matches(str) {
 }
 
 new TermMatcher("SINGLE_COMMENT", matches("//"), 1000).append();
-new TermMatcher("PATTERN", (str) => /^['#]\w+$/.exec(str), 200).append();
+new TermMatcher("PATTERN", (str) => /^['#]\w[\w_\d]*$/.exec(str), 200).append();
 new TermMatcher("TUPLE_START", matches("("), 900).append();
 new TermMatcher("TUPLE_END", matches(")"), 900).append();
 new TermMatcher("BLOCK_START", matches("{"), 900).append();
@@ -282,7 +282,7 @@ new TermMatcher("BLOCK_END", matches("}"), 900).append();
 new TermMatcher("NEXT_ELEMENT", matches(";"), 900).append();
 new TermMatcher("STRING", matches('"'), 800).append();
 new TermMatcher("DEFINE", matches(":"), 900).append();
-new TermMatcher("SYMBOL", (str) => /^\w+$/.exec(str), -100).append();
+new TermMatcher("SYMBOL", (str) => /^\w[\w_\d]*$/.exec(str), -100).append();
 new TermMatcher("OPERATOR", (str) => /^(?:[+\-*\/!]|&&|\|\|)$/.exec(str), 700).append();
 new TermMatcher("NUMBER", (str) => /^-?\d+(?:\.\d*)?$/.exec(str), 800).append();
 new TermMatcher("BOOLEAN", (str) => str === "true" || str === "false", 500).append();

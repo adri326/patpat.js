@@ -21,7 +21,7 @@ const interpreter = module.exports = function interpreter(branch, stack) {
   return last_context.last_value;
 }
 
-function find_pattern_in_stack(name, context_stack) {
+const find_pattern_in_stack = module.exports.find_pattern_in_stack = function find_pattern_in_stack(name, context_stack) {
   for (let n = context_stack.length - 1; n >= 0; n--) {
     if (context_stack[n].patterns.hasOwnProperty(name)) {
       return context_stack[n].patterns[name];
@@ -30,7 +30,7 @@ function find_pattern_in_stack(name, context_stack) {
   return null;
 }
 
-function find_symbol_in_stack(name, context_stack) {
+const find_symbol_in_stack = module.exports.find_symbol_in_stack = function find_symbol_in_stack(name, context_stack) {
   for (let n = context_stack.length - 1; n >= 0; n--) {
     if (context_stack[n].symbols.hasOwnProperty(name)) {
       return context_stack[n].symbols[name];
@@ -55,34 +55,50 @@ const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instr
   if (pattern) {
     if (typeof pattern._execute === "function") {
       let args = interprete_instruction(instruction.args, context_stack, next_instructions);
-      // console.log("!>", args);
       let result = pattern._execute(args, context_stack);
       return result;
     } else {
       let args = interprete_instruction(instruction.args, context_stack, next_instructions);
       // console.log("!>", args);
-      let new_ctx = {
-        symbols: {},
-        patterns: {}
-      };
-
-      for (let n = 0; n < pattern.args.length; n++) {
-        new_ctx.symbols[pattern.args[n].name] = args[n];
-      }
-
-      let result = interpreter(pattern.body, [...context_stack, new_ctx]);
-      return result;
+      return call_raw(pattern, args, context_stack);
     }
   } else {
     throw new RuntimeError(`Pattern not found: ${instruction.pattern.name}`, instruction.line, instruction.char);
   }
 };
 
+const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(instruction, context_stack, next_instructions) {
+  let fn = interprete_instruction(instruction.fn, context_stack, next_instructions);
+  if (Array.isArray(fn) && fn.length === 1) fn = fn[0];
+
+  if (fn.kind !== KINDS.FUNCTION) {
+    throw new RuntimeError("Left-hand-side call value is not a function", instruction.line, instruction.char);
+  }
+
+  let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+
+  return call_raw(fn, args, context_stack);
+}
+
+const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack) {
+  let new_ctx = {
+    symbols: {},
+    patterns: {}
+  };
+
+  for (let n = 0; n < fn.args.length; n++) {
+    new_ctx.symbols[fn.args[n].name] = args[n];
+  }
+
+  return interpreter(fn.body, [...(fn.context_stack || context_stack), new_ctx]);
+}
+
 EXECUTORS[KINDS.NUMBER] = (instruction) => instruction.number;
 
 EXECUTORS[KINDS.STRING] = (instruction) => instruction.string;
 
 EXECUTORS[KINDS.FUNCTION] = (instruction) => instruction;
+EXECUTORS[KINDS.PATTERN] = (instruction) => instruction;
 
 EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack, next_instructions) {
   let symbol = find_symbol_in_stack(instruction.name, context_stack);
