@@ -54,10 +54,6 @@ prelude.patterns = {
 
       if (!fn || fn.kind !== KINDS.FUNCTION && fn.kind !== KINDS.PATTERN) {
         throw new RuntimeError("Last argument must be a function!");
-      } else if (fn.kind === KINDS.PATTERN) {
-        let old_fn = fn;
-        fn = interpreter.find_pattern_in_stack(fn.name, context_stack);
-        if (!fn) throw new RuntimeError("Pattern " + old_fn.name + " not found", old_fn.line, old_fn.char);
       }
 
       let last_value = null;

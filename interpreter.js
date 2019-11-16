@@ -98,7 +98,14 @@ EXECUTORS[KINDS.NUMBER] = (instruction) => instruction.number;
 EXECUTORS[KINDS.STRING] = (instruction) => instruction.string;
 
 EXECUTORS[KINDS.FUNCTION] = (instruction) => instruction;
-EXECUTORS[KINDS.PATTERN] = (instruction) => instruction;
+
+EXECUTORS[KINDS.PATTERN] = (instruction, context_stack) => {
+  let pattern = find_pattern_in_stack(instruction.name, context_stack);
+  if (!pattern) {
+    throw new RuntimeError("Pattern not found: " + instruction.name, instruction.line, instruction.char);
+  }
+  return pattern;
+};
 
 EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack, next_instructions) {
   let symbol = find_symbol_in_stack(instruction.name, context_stack);
