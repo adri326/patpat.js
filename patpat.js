@@ -18,6 +18,7 @@ module.exports = function (source_path, args) {
     if (args.dumpTree) console.log(util.inspect(tree, {showHidden: false, depth: null}));
     interpreter(tree, [prelude]);
   } catch (e) {
+    if (args.throwError) throw e;
     if (e instanceof CompileError || e instanceof RuntimeError) {
       e.print(raw.split(/\n/g));
       process.exit(2);

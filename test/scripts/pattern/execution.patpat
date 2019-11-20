@@ -1,0 +1,12 @@
+'pat: () => {
+  'println("I am a pattern.")
+}
+
+'pat2: (a) => {
+  'println("I am " + a)
+}
+
+'pat()
+
+let x: ()
+'pat2("another pattern.")

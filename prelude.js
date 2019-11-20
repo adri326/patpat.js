@@ -9,7 +9,14 @@ prelude.patterns = {
     kind: KINDS.PATTERN,
     instructions: [],
     _execute: (args) => {
-      prelude.stdout.write(...args);
+      prelude.stdout.write(args.join(" ") + "\n");
+    }
+  },
+  "'print": {
+    kind: KINDS.PATTERN,
+    instructions: [],
+    _execute: (args) => {
+      prelude.stdout.write(args.join(" "));
     }
   },
   "'version": {

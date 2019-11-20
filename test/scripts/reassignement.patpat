@@ -1,3 +1,3 @@
 let var: "I am a variable."
 var: "I am not a variable."
-'println(var)
+'print(var)

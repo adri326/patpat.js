@@ -130,7 +130,7 @@ function mangle_define(branch) {
       }
 
       insert(branch, instruction, n - 1, 3);
-      n++;
+      n--;
     }
   }
 }

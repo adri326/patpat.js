@@ -1,2 +1,2 @@
 let x: "I am a variable."
-'println(x)
+'print(x)
