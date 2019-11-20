@@ -3,7 +3,6 @@ const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {RuntimeError} = require("./errors.js");
 
 const interpreter = module.exports = function interpreter(branch, stack) {
-
   // console.log(JSON.stringify(branch, " ", 2));
   let context_stack = [...stack, {patterns: {}, symbols: {}, last_value: null}];
   let last_context = context_stack[context_stack.length - 1];
