@@ -1,7 +1,7 @@
 const parser = require("./parser.js");
 const KINDS = require("./kinds.js");
 const interpreter = require("./interpreter.js");
-const prelude = module.exports = {};
+const prelude = module.exports;
 const {RuntimeError} = require("./errors.js");
 
 prelude.patterns = {
@@ -9,15 +9,18 @@ prelude.patterns = {
     kind: KINDS.PATTERN,
     instructions: [],
     _execute: (args) => {
-      console.log(...args);
+      prelude.stdout.write(...args);
     }
   },
   "'version": {
     kind: KINDS.PATTERN,
-    instructions: [{
-      kind: KINDS.STRING,
-      string: "0.0.2"
-    }]
+    args: [],
+    body: {
+      instructions: [{
+        kind: KINDS.STRING,
+        string: "0.0.2"
+      }]
+    }
   },
   "#if": {
     kind: KINDS.PATTERN,

@@ -100,13 +100,17 @@ function mangle_define(branch) {
         instruction = {
           kind: KINDS.DEFINE_SYMBOL,
           left,
-          right
+          right,
+          line: left.line,
+          char: left.char
         };
       } else if ([KINDS.EXPRESSION, KINDS.TUPLE, KINDS.FUNCTION_CALL].includes(left.kind)) {
         instruction = {
           kind: KINDS.DEFINE_COMPLEX,
           left,
-          right
+          right,
+          line: left.line,
+          char: left.char
         };
       } else if (left.kind === KINDS.PATTERN) {
         if (right.kind !== KINDS.FUNCTION) {
