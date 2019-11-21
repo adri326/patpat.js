@@ -17,6 +17,6 @@ describe("Pattern declaration", () => {
 describe("Pattern execution", () => {
   it("Should be able to call a pattern", () => {
     let result = execute("scripts/pattern/execution.patpat");
-    assert.equal(result, "I am a pattern.\nI am another pattern.\n")
+    assert.equal(result, "I am a pattern.\nI am another pattern.\n");
   });
 });

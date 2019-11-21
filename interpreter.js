@@ -2,6 +2,8 @@ const KINDS = require("./kinds.js");
 const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {RuntimeError} = require("./errors.js");
 
+const EXECUTORS = {};
+
 const interpreter = module.exports = function interpreter(branch, stack) {
   // console.log(JSON.stringify(branch, " ", 2));
   let context_stack = [...stack, {patterns: {}, symbols: {}, last_value: null}];
@@ -46,19 +48,20 @@ function interprete_instruction(instruction, context_stack, next_instructions) {
   }
 }
 
-const EXECUTORS = {};
-
 const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instruction, context_stack, next_instructions) {
   let pattern = find_pattern_in_stack(instruction.pattern.name, context_stack);
 
   if (pattern) {
+    let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+    if (pattern.args && args.length < pattern.args.filter(x => !x.optional).length) {
+      throw new RuntimeError("Not enough argument given to " + pattern.name + ", did you use ';'?");
+    }
+
+    // console.log("!>", args);
+
     if (typeof pattern._execute === "function") {
-      let args = interprete_instruction(instruction.args, context_stack, next_instructions);
-      let result = pattern._execute(args, context_stack);
-      return result;
+      return pattern._execute(args, context_stack);
     } else {
-      let args = interprete_instruction(instruction.args, context_stack, next_instructions);
-      // console.log("!>", args);
       return call_raw(pattern, args, context_stack);
     }
   } else {
@@ -95,6 +98,8 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
 EXECUTORS[KINDS.NUMBER] = (instruction) => instruction.number;
 
 EXECUTORS[KINDS.STRING] = (instruction) => instruction.string;
+
+EXECUTORS[KINDS.BOOLEAN] = (instruction) => instruction.state;
 
 EXECUTORS[KINDS.FUNCTION] = (instruction) => instruction;
 

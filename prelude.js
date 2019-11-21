@@ -7,6 +7,7 @@ const {RuntimeError} = require("./errors.js");
 prelude.patterns = {
   "'println": {
     kind: KINDS.PATTERN,
+    name: "'println",
     instructions: [],
     _execute: (args) => {
       prelude.stdout.write(args.join(" ") + "\n");
@@ -14,6 +15,7 @@ prelude.patterns = {
   },
   "'print": {
     kind: KINDS.PATTERN,
+    name: "'print",
     instructions: [],
     _execute: (args) => {
       prelude.stdout.write(args.join(" "));
@@ -21,6 +23,7 @@ prelude.patterns = {
   },
   "'version": {
     kind: KINDS.PATTERN,
+    name: "'version",
     args: [],
     body: {
       instructions: [{
@@ -31,14 +34,23 @@ prelude.patterns = {
   },
   "#if": {
     kind: KINDS.PATTERN,
+    name: "#if",
+    args: [
+      {name: "condition",optional: false},
+      {name: "success", optional: false},
+      {name: "error", optional: true, default: null}
+    ],
     _execute: ([condition, success, error], context_stack) => {
+      if (!success) {
+        throw RuntimeError("Invalid argument type, expected FUNCTION, got " + success + " (in " + this.name + ")");
+      }
       if (success.kind !== KINDS.FUNCTION) {
         throw RuntimeError("Invalid argument type, expected FUNCTION, got " + success.kind.description, success.line, success.char);
       }
       if (error && error.kind !== KINDS.FUNCTION) {
         throw RuntimeError("Invalid argument type, expected FUNCTION, got " + error.kind.description, error.line, error.char);
       }
-
+      
       if (condition) {
         return interpreter(success.body, context_stack);
       } else if (error) {
@@ -50,6 +62,12 @@ prelude.patterns = {
   },
   "#for": {
     kind: KINDS.PATTERN,
+    name: "#for",
+    args: [
+      {name: "from", optional: false},
+      {name: "to", optional: true},
+      {name: "fn", optional: false}
+    ],
     _execute: (args, context_stack) => {
       let from = args[0];
       let to = args[1];

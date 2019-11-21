@@ -1,0 +1,10 @@
+'test: (a) => {
+  #if(a; () => {
+    'print("A")
+  }; () => {
+    'print("B")
+  })
+}
+
+'test(false)
+'test(true)
