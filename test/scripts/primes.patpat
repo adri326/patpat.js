@@ -1,0 +1,15 @@
+// This is a simple prime sieve
+// As of right now, it cannot be executed
+
+#for(2; 100; (n) => {
+  let is_prime: true
+  #for(2; n::sqrt(); (x) => {
+    #if((x % n) == 0; () => {
+      is_prime: false
+      #break()
+    })
+  })
+  #if(is_prime; () => {
+    'println(n)
+  })
+})

@@ -1,0 +1,4 @@
+'println(4 + 6.5)
+let a: 9 + -5.25
+'println(a + 1025)
+'println("I like " + "foxes")

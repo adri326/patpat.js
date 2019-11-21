@@ -251,15 +251,18 @@ const NUM_OPS = {
   [KINDS.OP_MUL]: (a, b) => a * b,
   [KINDS.OP_SUB]: (a, b) => a - b,
   [KINDS.OP_DIV]: (a, b) => a / b,
+  [KINDS.OP_MOD]: (a, b) => a % b,
   [KINDS.OP_AND]: (a, b) => a & b,
   [KINDS.OP_OR]: (a, b) => a | b,
-  [KINDS.OP_NOT]: a => ~a
+  [KINDS.OP_NOT]: a => ~a,
+  [KINDS.OP_EQ]: (a, b) => a === b
 };
 
 const BOOL_OPS = {
   [KINDS.OP_AND]: (a, b) => a && b,
   [KINDS.OP_OR]: (a, b) => a || b,
-  [KINDS.OP_NOT]: a => !a
+  [KINDS.OP_NOT]: a => !a,
+  [KINDS.OP_EQ]: (a, b) => a === b
 };
 
 const STR_OPS = {
@@ -270,5 +273,6 @@ const STR_OPS = {
     } else {
       throw new RuntimeError("Cannot multiply string with a number");
     }
-  }
+  },
+  [KINDS.OP_EQ]: (a, b) => a === b
 }

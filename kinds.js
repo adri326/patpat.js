@@ -20,9 +20,11 @@ const KINDS = module.exports = {
   OP_SUB: Symbol("OP_SUB"),
   OP_MUL: Symbol("OP_MUL"),
   OP_DIV: Symbol("OP_DIV"),
+  OP_MOD: Symbol("OP_MOD"),
   OP_AND: Symbol("OP_AND"),
   OP_OR: Symbol("OP_OR"),
   OP_NOT: Symbol("OP_NOT"),
+  OP_EQ: Symbol("OP_EQ"),
 
   FUNCTION_CALL: Symbol("FUNCTION_CALL"),
   PATTERN_CALL: Symbol("PATTERN_CALL"),
@@ -38,8 +40,10 @@ KINDS.BINARY_OPS = [
   KINDS.OP_MUL,
   KINDS.OP_SUB,
   KINDS.OP_DIV,
+  KINDS.OP_MOD,
   KINDS.OP_AND,
-  KINDS.OP_OR
+  KINDS.OP_OR,
+  KINDS.OP_EQ
 ];
 
 KINDS.UNARY_OPS = [
