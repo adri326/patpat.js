@@ -86,11 +86,16 @@ prelude.patterns = {
 
       let last_value = null;
       for (let x = from; x < to; x += step) {
+        let result;
         if (typeof fn._execute === "function") {
-          last_value = fn._execute([x], context_stack);
+          result = fn._execute([x], context_stack);
         } else {
-          last_value = interpreter.call_raw(fn, [x], context_stack);
+          result = interpreter.call_raw(fn, [x], context_stack);
         }
+        if (Array.isArray(result) && result[0] === prelude.symbols.__break) {
+          return result[1];
+        }
+        last_value = result;
       }
       return last_value;
     }
@@ -116,7 +121,34 @@ prelude.patterns = {
         })
       };
     }
+  },
+  "#break": {
+    kind: KINDS.PATTERN,
+    args: [
+      {
+        name: "__value",
+        optional: true
+      }
+    ],
+    body: {
+      instructions: [{
+        kind: KINDS.TUPLE,
+        instructions: [
+          {
+            kind: KINDS.SYMBOL,
+            name: "__break"
+          },
+          {kind: KINDS.NEXT_ELEMENT},
+          {
+            kind: KINDS.SYMBOL,
+            name: "__value"
+          }
+        ]
+      }],
+    }
   }
 }
 
-prelude.symbols = {};
+prelude.symbols = {
+  __break: Symbol("BREAK")
+};

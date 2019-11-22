@@ -322,7 +322,7 @@ OPERATORS = {
   "-": KINDS.OP_SUB,
   "*": KINDS.OP_MUL,
   "/": KINDS.OP_DIV,
-  "%": KINDS.OP_MOD
+  "%": KINDS.OP_MOD,
   "||": KINDS.OP_OR,
   "&&": KINDS.OP_AND,
   "!": KINDS.OP_NOT,

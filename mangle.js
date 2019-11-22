@@ -206,7 +206,7 @@ function mangle_unary_expressions(branch, {ctx_kind}) {
           branch.instructions[o].char
         );
       }
-
+      
       insert(branch, {
         kind: KINDS.EXPRESSION,
         steps: [branch.instructions[o], ...unaries],
@@ -249,6 +249,8 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
             throw new CompileError("Invalid term following operator", branch.instructions[o + 1].line, branch.instructions[o + 1].char);
           }
           elements.push(branch.instructions[o + 1]);
+        } else {
+          break;
         }
       }
 
@@ -272,7 +274,7 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
         line: branch.instructions[n].line,
         char: branch.instructions[n].char,
         steps
-      }, n - 1, steps.length);
+      }, n - 1, o - n + 1);
       n--;
     }
   }
