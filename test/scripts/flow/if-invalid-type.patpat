@@ -1,1 +1,3 @@
+// This script is meant to throw an error
+
 #if(true, "Execute me!")

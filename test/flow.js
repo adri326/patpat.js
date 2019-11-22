@@ -21,4 +21,16 @@ describe("Program flow: if, for, etc.", () => {
       }, RuntimeError);
     });
   });
+  describe("#for", () => {
+    it("Should loop according to the given amount", () => {
+      let result = execute("scripts/flow/for.patpat");
+      assert.equal(result, "3\n4\n5\n6\n");
+    });
+
+    it("Should throw an error while trying to execute a for loop while missing its third argument", () => {
+      assert.throws(() => {
+        execute("scripts/flow/for-nea.patpat");
+      }, RuntimeError);
+    });
+  });
 });

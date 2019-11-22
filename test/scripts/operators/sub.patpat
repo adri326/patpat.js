@@ -1,0 +1,3 @@
+'println(6.625 - 5)
+let a: 2 - 3
+'println(a - 8)

@@ -1,0 +1,10 @@
+'assert: (a) => {
+  #if(!a; #error)
+}
+
+'assert(2 == 2)
+'assert("abc" == "abc")
+let a: 4
+'assert(a == 4)
+let b: "I like wolves"
+'assert(b == "I like wolves")

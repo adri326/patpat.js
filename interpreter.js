@@ -56,13 +56,13 @@ const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instr
     // console.log(pattern);
     // if (pattern.args) console.log(pattern.args.filter(x => !x.optional).length, args);
     if (pattern.args && args.length < pattern.args.filter(x => !x.optional).length) {
-      throw new RuntimeError("Not enough argument given to " + pattern.name + ", did you use ';'?");
+      throw new RuntimeError("Not enough argument given to " + pattern.name + ", did you use ';'?", instruction.line, instruction.char);
     }
 
     // console.log("!>", args);
 
     if (typeof pattern._execute === "function") {
-      return pattern._execute(args, context_stack);
+      return pattern._execute(args, context_stack, instruction.line, instruction.char);
     } else {
       return call_raw(pattern, args, context_stack);
     }

@@ -40,21 +40,29 @@ prelude.patterns = {
       {name: "success", optional: false},
       {name: "error", optional: true, default: null}
     ],
-    _execute: ([condition, success, error], context_stack) => {
+    _execute: ([condition, success, error], context_stack, line, char) => {
       if (!success) {
-        throw RuntimeError("Invalid argument type, expected FUNCTION, got " + success + " (in " + this.name + ")");
+        throw new RuntimeError("Invalid first argument type, expected FUNCTION or PATTERN, got " + success + " (in " + this.name + ")", line, char);
       }
-      if (success.kind !== KINDS.FUNCTION) {
-        throw RuntimeError("Invalid argument type, expected FUNCTION, got " + success.kind.description, success.line, success.char);
+      if (success.kind !== KINDS.FUNCTION && success.kind !== KINDS.PATTERN) {
+        throw new RuntimeError("Invalid argument type, expected FUNCTION or PATTERN, got " + success.kind.description, success.line, success.char);
       }
-      if (error && error.kind !== KINDS.FUNCTION) {
-        throw RuntimeError("Invalid argument type, expected FUNCTION, got " + error.kind.description, error.line, error.char);
+      if (error && error.kind !== KINDS.FUNCTION && error.kind !== KINDS.PATTERN) {
+        throw new RuntimeError("Invalid argument type, expected FUNCTION or PATTERN, got " + error.kind.description, error.line, error.char);
       }
-      
+
       if (condition) {
-        return interpreter(success.body, context_stack);
+        if (success._execute) {
+          return success._execute([], context_stack, line, char);
+        } else {
+          return interpreter(success.body, context_stack);
+        }
       } else if (error) {
-        return interpreter(error.body, context_stack);
+        if (error._execute) {
+          return condition._execute([], context_stack, line, char);
+        } else {
+          return interpreter(error.body, context_stack);
+        }
       } else {
         return null;
       }
@@ -68,7 +76,7 @@ prelude.patterns = {
       {name: "to", optional: true},
       {name: "fn", optional: false}
     ],
-    _execute: (args, context_stack) => {
+    _execute: (args, context_stack, line, char) => {
       let from = args[0];
       let to = args[1];
       let step = 1;
@@ -81,14 +89,14 @@ prelude.patterns = {
       }
 
       if (!fn || fn.kind !== KINDS.FUNCTION && fn.kind !== KINDS.PATTERN) {
-        throw new RuntimeError("Last argument must be a function!");
+        throw new RuntimeError("Last argument must be a function!", line, char);
       }
 
       let last_value = null;
       for (let x = from; x < to; x += step) {
         let result;
         if (typeof fn._execute === "function") {
-          result = fn._execute([x], context_stack);
+          result = fn._execute([x], context_stack, line, char);
         } else {
           result = interpreter.call_raw(fn, [x], context_stack);
         }
@@ -145,6 +153,18 @@ prelude.patterns = {
           }
         ]
       }],
+    }
+  },
+  "#error": {
+    kind: KINDS.PATTERN,
+    args: [
+      {
+        name: "value",
+        optional: true
+      }
+    ],
+    _execute: ([value], _, line, char) => {
+      throw new RuntimeError("Runtime Error" + (value ? ": " + value : ""), line, char);
     }
   }
 }
