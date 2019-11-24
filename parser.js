@@ -32,7 +32,7 @@ function parse_body(sub_terms, branch, options) {
     switch (current_term.matcher) {
       case MATCHERS.SINGLE_COMMENT: // Skips to the next line
         let current_line = current_term.line;
-        while (sub_terms[++n].line === current_line);
+        while (++n < sub_terms.length && sub_terms[n].line === current_line);
         n--;
 
         break;
@@ -103,18 +103,10 @@ function parse_body(sub_terms, branch, options) {
         });
 
         break;
-      case MATCHERS.DEFINE: // If the last instruction was a tuple, looks for the last two terms, otherwise only looks for the last one.
-        // It then pops them off from the instruction set and puts them together in an instruction
+      case MATCHERS.TYPENAME: // Adds this typename to the terms
         branch.terms.push({
-          kind: KINDS.DEFINE,
-          line: current_term.line,
-          char: current_term.char
-        })
-
-        break;
-      case MATCHERS.NEXT_ELEMENT:
-        branch.terms.push({
-          kind: KINDS.NEXT_ELEMENT,
+          name: current_term.word,
+          kind: KINDS.TYPENAME,
           line: current_term.line,
           char: current_term.char
         });
@@ -147,25 +139,9 @@ function parse_body(sub_terms, branch, options) {
         });
 
         break;
-      case MATCHERS.ARROW:
+      default:
         branch.terms.push({
-          kind: KINDS.ARROW,
-          line: current_term.line,
-          char: current_term.char
-        });
-
-        break;
-      case MATCHERS.LET:
-        branch.terms.push({
-          kind: KINDS.LET,
-          line: current_term.line,
-          char: current_term.char
-        });
-
-        break;
-      case MATCHERS.SEPARATOR:
-        branch.terms.push({
-          kind: KINDS.SEPARATOR,
+          kind: KINDS[current_term.matcher.name],
           line: current_term.line,
           char: current_term.char
         });
@@ -299,7 +275,7 @@ function matches(str) {
 
 new TermMatcher("SPACE", /^\s+/, 2000).append();
 new TermMatcher("SINGLE_COMMENT", /^\/\//, 1000).append();
-new TermMatcher("PATTERN", /^['#]\w[\w_\d]*/, 200).append();
+new TermMatcher("PATTERN", /^['#]\w(?:[\w_\d]|::)*/, 200).append();
 new TermMatcher("TUPLE_START", /^\(/, 900).append();
 new TermMatcher("TUPLE_END", /^\)/, 900).append();
 new TermMatcher("BLOCK_START", /^{/, 900).append();
@@ -307,13 +283,16 @@ new TermMatcher("BLOCK_END", /^}/, 900).append();
 new TermMatcher("NEXT_ELEMENT", /^;/, 900).append();
 new TermMatcher("STRING", /^"/, 800).append();
 new TermMatcher("DEFINE", /^:/, 900).append();
-new TermMatcher("SYMBOL", /^\w[\w_\d]*/, -100).append();
+new TermMatcher("SYMBOL", /^[a-z_][a-z_\d]*/, -200).append();
+new TermMatcher("TYPENAME", /^[A-Z][\w_\d]*/, -100).append();
 new TermMatcher("OPERATOR", /^(?:[+\-*\/!%]|&&|\|\||==)/, 700).append();
 new TermMatcher("NUMBER", /^-?\d+(?:\.\d*)?/, 800).append();
 new TermMatcher("BOOLEAN", /^(?:true|false)/, 500).append();
 new TermMatcher("ARROW", /^=>/, 1200).append();
 new TermMatcher("LET", /^let/, 600).append();
 new TermMatcher("SEPARATOR", /^,/, 700).append();
+new TermMatcher("STRUCT", /^struct/, 600).append();
+new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
 
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);

@@ -1,0 +1,14 @@
+struct Snowball {
+  let weight: 0
+
+  'throw: (self; target) => {
+    'println("I am thrown at"; target; "with force"; self.weight; "!")
+  }
+
+  'new: () => {
+    self.weight: 2
+  }
+}
+
+let a: Snowball.'new()
+a.'throw("Shad")

@@ -172,3 +172,5 @@ prelude.patterns = {
 prelude.symbols = {
   __break: Symbol("BREAK")
 };
+
+prelude.structs = {};

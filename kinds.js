@@ -11,10 +11,14 @@ const KINDS = module.exports = {
   DEFINE_COMPLEX: Symbol("DEFINE_COMPLEX"),
   DEFINE: Symbol("DEFINE"),
   SYMBOL: Symbol("SYMBOL"),
+  TYPENAME: Symbol("TYPENAME"),
   OPERATOR: Symbol("OPERATOR"),
   ARROW: Symbol("ARROW"),
   LET: Symbol("LET"),
+  STRUCT: Symbol("STRUCT"),
   SEPARATOR: Symbol("SEPARATOR"),
+  MEMBER_ACCESSOR: Symbol("MEMBER_ACCESSOR"),
+  DEFINE_MEMBER: Symbol("DEFINE_MEMBER"),
 
   OP_ADD: Symbol("OP_ADD"),
   OP_SUB: Symbol("OP_SUB"),
@@ -32,7 +36,9 @@ const KINDS = module.exports = {
   UNARY_EXPRESSION: Symbol("UNARY_EXPRESSION"),
   FUNCTION: Symbol("FUNCTION"),
   BLOCK: Symbol("BLOCK"),
-  DECLARE_SYMBOL: Symbol("DECLARE_SYMBOL")
+  DECLARE_SYMBOL: Symbol("DECLARE_SYMBOL"),
+  STRUCT_INSTANCE: Symbol("STRUCT_INSTANCE"),
+  STRUCT_INIT: Symbol("STRUCT_INIT")
 };
 
 KINDS.BINARY_OPS = [

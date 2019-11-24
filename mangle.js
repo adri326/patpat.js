@@ -8,9 +8,10 @@ const {CompileError} = require("./errors.js");
 module.exports = function mangle_body(branch, options) {
   branch.instructions = branch.terms.concat([]);
 
-  // console.log(branch);
   mangle_functions(branch, options);
+  mangle_types(branch, options);
   mangle_calls(branch, options);
+  mangle_accessors(branch, options);
   mangle_unary_expressions(branch, options);
   mangle_expressions(branch, options);
   mangle_define(branch, options);
@@ -26,7 +27,6 @@ module.exports = function mangle_body(branch, options) {
 }
 
 function mangle_declaration(branch, {ctx_kind, is_tuple, is_array}) {
-  // console.log(branch);
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.LET) {
       if (n === branch.instructions.length - 1) {
@@ -127,6 +127,17 @@ function mangle_define(branch) {
           line: left.line,
           char: left.char
         }
+      } else if (left.kind === KINDS.MEMBER_ACCESSOR) {
+        instruction = {
+          kind: KINDS.DEFINE_MEMBER,
+          parent: left.parent,
+          member: left.member,
+          right,
+          line: left.line,
+          char: left.char
+        };
+      } else {
+        throw new CompileError("Unexpected term preceding assignement", left.line, left.char);
       }
 
       insert(branch, instruction, n - 1, 3);
@@ -326,6 +337,91 @@ function mangle_functions(branch) {
         body: branch.instructions[n + 1]
       }, n - 1, 3);
       n--;
+    }
+  }
+}
+
+function mangle_types(branch, options) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind === KINDS.STRUCT) {
+      if (n >= branch.instructions.length - 2) {
+        throw new CompileError("struct keyword at end of " + options.ctx_kind, branch.instructions[n].line, branch.instructions[n].char);
+      } else if (branch.instructions[n + 1].kind !== KINDS.TYPENAME) {
+        throw new CompileError("Invalid term following struct: " + branch.instructions[n + 1].kind.description, branch.instructions[n + 1].line, branch.instructions[n + 1].char);
+      } else if (branch.instructions[n + 2].kind !== KINDS.BLOCK) {
+        throw new CompileError("Invalid term following struct: " + branch.instructions[n + 2].kind.description, branch.instructions[n + 2].line, branch.instructions[n + 2].char);
+      }
+
+      let symbols = {};
+      let patterns = {};
+
+      for (let instruction of branch.instructions[n + 2].instructions) {
+        if (instruction.kind === KINDS.DECLARE_SYMBOL) {
+          symbols[instruction.name] = {
+            kind: KINDS.DECLARE_SYMBOL,
+            name: instruction.name,
+            default_value: instruction.right,
+            line: instruction.line,
+            char: instruction.char
+          };
+        } else if (instruction.kind === KINDS.DEFINE_PATTERN) {
+          patterns[instruction.name] = instruction;
+        } else if (instruction.kind === KINDS.NEXT_ELEMENT);
+        else {
+          throw new CompileError("Invalid term within a struct definition: " + instruction.kind.description, instruction.line, instruction.char);
+        }
+      }
+
+      insert(branch, {
+        kind: KINDS.STRUCT,
+        name: branch.instructions[n + 1].name,
+        symbols,
+        patterns,
+        line: branch.instructions[n].line,
+        char: branch.instructions[n].char
+      }, n, 3);
+    }
+  }
+}
+
+function mangle_accessors(branch, options) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind === KINDS.MEMBER_ACCESSOR) {
+      if (n === 0) {
+        throw new CompileError("Member accessor at start of " + option.ctx_kind, instructions[n].line, instructions[n].char);
+      } else if (n === branch.instructions.length - 1) {
+        throw new CompileError("Member accessor at end of " + option.ctx_kind, instructions[n].line, instructions[n].char);
+      }
+
+      if (![KINDS.PATTERN_CALL, KINDS.TUPLE, KINDS.SYMBOL, KINDS.TYPENAME].includes(branch.instructions[n - 1].kind)) {
+        throw new CompileError("Invalid term preceding a member accessor", branch.instructions[n - 1].line, branch.instructions[n - 1].char);
+      }
+      // TODO: implement more ways to access members of a struct (tuple, pattern)
+      if (![KINDS.SYMBOL, KINDS.PATTERN_CALL].includes(branch.instructions[n + 1].kind)) {
+        throw new CompileError("Invalid term following a member accessor", branch.instructions[n + 1].line, branch.instructions[n + 1].char);
+      }
+
+      if (branch.instructions[n - 1].kind === KINDS.TYPENAME) {
+        if (branch.instructions[n + 1].kind === KINDS.PATTERN_CALL) {
+          insert(branch, {
+            kind: KINDS.STRUCT_INIT,
+            name: branch.instructions[n - 1].name,
+            pattern: branch.instructions[n + 1].pattern.name,
+            args: branch.instructions[n + 1].args,
+            line: branch.instructions[n - 1].line,
+            char: branch.instructions[n - 1].char
+          }, n - 1, 3);
+          continue;
+        }
+      }
+
+      insert(branch, {
+        kind: KINDS.MEMBER_ACCESSOR,
+        parent: branch.instructions[n - 1],
+        member: branch.instructions[n + 1],
+        line: branch.instructions[n - 1].line,
+        char: branch.instructions[n - 1].char
+      }, n - 1, 3);
     }
   }
 }

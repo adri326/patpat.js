@@ -6,7 +6,7 @@ const EXECUTORS = {};
 
 const interpreter = module.exports = function interpreter(branch, stack) {
   // console.log(JSON.stringify(branch, " ", 2));
-  let context_stack = [...stack, {patterns: {}, symbols: {}, last_value: null}];
+  let context_stack = [...stack, {patterns: {}, symbols: {}, structs: {}, last_value: null}];
   let last_context = context_stack[context_stack.length - 1];
   for (let instruction of branch.instructions) {
     if (instruction.kind === KINDS.DEFINE_PATTERN) {
@@ -35,6 +35,15 @@ const find_symbol_in_stack = module.exports.find_symbol_in_stack = function find
   for (let n = context_stack.length - 1; n >= 0; n--) {
     if (context_stack[n].symbols.hasOwnProperty(name)) {
       return context_stack[n].symbols[name];
+    }
+  }
+  return null;
+}
+
+const find_struct_in_stack = module.exports.find_struct_in_stack = function find_struct_in_stack(name, context_stack) {
+  for (let n = context_stack.length - 1; n >= 0; n--) {
+    if (context_stack[n].structs.hasOwnProperty(name)) {
+      return context_stack[n].structs[name];
     }
   }
   return null;
@@ -87,7 +96,9 @@ const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(in
 const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack) {
   let new_ctx = {
     symbols: {},
-    patterns: {}
+    patterns: {},
+    structs: {},
+    last_value: null
   };
 
   for (let n = 0; n < fn.args.length; n++) {
@@ -163,6 +174,94 @@ EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_s
     last_context.symbols[instruction.name] = null;
   } else {
     last_context.symbols[instruction.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+  }
+}
+
+EXECUTORS[KINDS.STRUCT] = function declare_struct(instruction, context_stack, next_instructions) {
+  let last_context = context_stack[context_stack.length - 1];
+  last_context.structs[instruction.name] = instruction;
+}
+
+EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack, next_instructions) {
+  let struct = find_struct_in_stack(instruction.name, context_stack);
+  if (!struct) {
+    throw new RuntimeError("No struct named " + instruction.name + " found.", instruction.line, instruction.char);
+  }
+
+  let pattern = find_pattern_in_stack(instruction.pattern, [struct]);
+  if (!pattern) {
+    throw new RuntimeError(`No pattern named ${instruction.pattern} found in ${instruction.name}/`, instruction.line, instruction.char);
+  }
+
+  let instance = {
+    kind: KINDS.STRUCT_INSTANCE,
+    parent: struct,
+    symbols: {}
+  };
+
+  for (let symbol in struct.symbols) {
+    instance.symbols[symbol] = struct.symbols[symbol].right;
+  }
+
+  let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+  let new_ctx = [...context_stack, {
+    symbols: {
+      self: {...instance, patterns: struct.patterns, structs: {}}
+    },
+    patterns: {},
+    structs: {}
+  }];
+
+  call_raw(pattern, instruction.args, new_ctx);
+
+  return instance;
+}
+
+EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_stack, next_instructions) {
+  let parent = find_symbol_in_stack(instruction.parent.name, context_stack);
+  if (parent.kind !== KINDS.STRUCT_INSTANCE) {
+    throw new RuntimeError("Cannot access member of " + parent.kind.description, instruction.parent.line, instruction.parent.char);
+  }
+
+  if (!parent.symbols.hasOwnProperty(instruction.member.name)) {
+    throw new RuntimeError("Variable not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+  }
+
+  let old_value = parent.symbols[instruction.member.name];
+
+  parent.symbols[instruction.member.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+
+  return old_value;
+}
+
+EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack, next_instructions) {
+  // struct instance
+  let instance = find_symbol_in_stack(instruction.parent.name, context_stack);
+  if (!instance) { // if the instance isn't defined
+    console.log(context_stack);
+    throw new RuntimeError("Variable not found", instruction.line, instruction.char);
+  }
+  if (instance.kind !== KINDS.STRUCT_INSTANCE) { // if the instance isn't a struct
+    throw new RuntimeError("Cannot access member of " + parent.kind.description, instruction.parent.line, instruction.parent.char);
+  }
+
+  switch (instruction.member.kind) {
+    case KINDS.SYMBOL:
+      if (!instance.symbols.hasOwnProperty(instruction.member.name)) { // if the symbol is not found
+        throw new RuntimeError("Variable not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+      }
+
+      return instance.symbols[instruction.member.name];
+    case KINDS.PATTERN_CALL:
+      let pattern = instance.parent.patterns[instruction.member.pattern.name];
+      if (!pattern) { // if the pattern is not found
+        throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+      }
+
+      let args = interprete_instruction(instruction.member.args, context_stack, next_instructions);
+      let result = call_raw(pattern, [instance, ...args], context_stack);
+      
+      return result;
   }
 }
 
