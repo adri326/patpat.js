@@ -193,7 +193,11 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) 
 
   let pattern = find_pattern_in_stack(instruction.pattern, [struct]);
   if (!pattern) {
-    throw new RuntimeError(`No pattern named ${instruction.pattern} found in ${instruction.name}/`, instruction.line, instruction.char);
+    throw new RuntimeError(`No pattern named ${instruction.pattern.name} found in ${instruction.name}.`, instruction.line, instruction.char);
+  }
+
+  if (pattern.is_method) {
+    throw new RuntimeError(`Pattern ${instruction.pattern.name} is not a constructor.`, instruction.line, instruction.char);
   }
 
   let instance = {
@@ -260,10 +264,13 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
       if (!pattern) { // if the pattern is not found
         throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
       }
+      if (!pattern.is_method) {
+        throw new RuntimeError("Pattern is not a method", instruction.member.line, instruction.member.char);
+      }
 
       let args = interprete_instruction(instruction.member.args, context_stack);
       let result = call_raw(pattern, [instance, ...args], context_stack);
-      
+
       return result;
   }
 }

@@ -125,7 +125,8 @@ function mangle_define(branch) {
           args: right.args,
           body: right.body,
           line: left.line,
-          char: left.char
+          char: left.char,
+          is_method: right.is_method
         }
       } else if (left.kind === KINDS.MEMBER_ACCESSOR) {
         instruction = {
@@ -310,6 +311,7 @@ function mangle_functions(branch) {
       }
 
       let args = [];
+      let is_method = false;
 
       for (let instruction of branch.instructions[n - 1].instructions) {
         if (instruction.kind === KINDS.SYMBOL) {
@@ -317,10 +319,22 @@ function mangle_functions(branch) {
             ...instruction,
             symbolic: false
           });
-        } else if (instruction.kind === KINDS.NEXT_ELEMENT) {}
-        else {
-          throw new CompileError("Invalid element in function argument tuple: " + instruction.kind.description, instruction.line, instruction.char);
+          continue
+        } else if (instruction.kind === KINDS.NEXT_ELEMENT) {
+          continue;
+        } else if (instruction.kind === KINDS.PATTERN_CALL) {
+          if (instruction.pattern.name === "#self") {
+            is_method = true;
+            args.push({
+              name: "self",
+              optional: false,
+              symbolic: false
+            });
+            continue;
+          }
         }
+        throw new CompileError("Invalid element in function argument tuple: " + instruction.kind.description, instruction.line, instruction.char);
+
         /* else if (instruction.kind === KINDS.EXPRESSION && instruction.operator === KINDS.SYMBOLIC_OPERATOR && instruction.steps.length === 2) {
           args.push({
             name: instruction.steps[0],
@@ -334,7 +348,8 @@ function mangle_functions(branch) {
       insert(branch, {
         kind: KINDS.FUNCTION,
         args,
-        body: branch.instructions[n + 1]
+        body: branch.instructions[n + 1],
+        is_method
       }, n - 1, 3);
       n--;
     }
