@@ -9,14 +9,16 @@ const interpreter = module.exports = function interpreter(branch, stack) {
   // console.log(JSON.stringify(branch, " ", 2));
   let context_stack = [...stack, {patterns: {}, symbols: {}, structs: {}, last_value: null}];
   let last_context = context_stack[context_stack.length - 1];
+
+  // NOTE: Patterns are read ahead
   for (let instruction of branch.instructions) {
     if (instruction.kind === KINDS.DEFINE_PATTERN) {
       last_context.patterns[instruction.name] = instruction;
     }
   }
-  for (let n = 0; n < branch.instructions.length; n++) {
 
-    let result = interprete_instruction(branch.instructions[n], context_stack, branch.instructions.slice(n+1));
+  for (let n = 0; n < branch.instructions.length; n++) {
+    let result = interprete_instruction(branch.instructions[n], context_stack);
     last_context.last_value = result;
   }
 
@@ -50,19 +52,19 @@ const find_struct_in_stack = module.exports.find_struct_in_stack = function find
   return null;
 }
 
-function interprete_instruction(instruction, context_stack, next_instructions) {
+function interprete_instruction(instruction, context_stack) {
   let last_context = context_stack[context_stack.length - 1];
 
   if (EXECUTORS.hasOwnProperty(instruction.kind)) {
-    return EXECUTORS[instruction.kind](instruction, context_stack, next_instructions);
+    return EXECUTORS[instruction.kind](instruction, context_stack);
   }
 }
 
-const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instruction, context_stack, next_instructions) {
+const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instruction, context_stack) {
   let pattern = find_pattern_in_stack(instruction.pattern.name, context_stack);
 
   if (pattern) {
-    let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+    let args = interprete_instruction(instruction.args, context_stack);
     // console.log(pattern);
     // if (pattern.args) console.log(pattern.args.filter(x => !x.optional).length, args);
     if (pattern.args && args.length < pattern.args.filter(x => !x.optional).length) {
@@ -81,15 +83,15 @@ const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instr
   }
 };
 
-const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(instruction, context_stack, next_instructions) {
-  let fn = interprete_instruction(instruction.fn, context_stack, next_instructions);
+const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(instruction, context_stack) {
+  let fn = interprete_instruction(instruction.fn, context_stack);
   if (Array.isArray(fn) && fn.length === 1) fn = fn[0];
 
   if (fn.kind !== KINDS.FUNCTION) {
     throw new RuntimeError("Left-hand-side call value is not a function", instruction.line, instruction.char);
   }
 
-  let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+  let args = interprete_instruction(instruction.args, context_stack);
 
   return call_raw(fn, args, context_stack);
 }
@@ -125,7 +127,7 @@ EXECUTORS[KINDS.PATTERN] = (instruction, context_stack) => {
   return pattern;
 };
 
-EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack) {
   let symbol = find_symbol_in_stack(instruction.name, context_stack);
   if (symbol !== null) {
     return symbol;
@@ -147,11 +149,11 @@ EXECUTORS[KINDS.TUPLE] = function tuple(instruction, context_stack) {
   return elements;
 };
 
-EXECUTORS[KINDS.DEFINE_SYMBOL] = function set_symbol(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.DEFINE_SYMBOL] = function set_symbol(instruction, context_stack) {
   for (let o = context_stack.length - 1; o >= 0; o--) {
     if (context_stack[o].symbols.hasOwnProperty(instruction.left.name)) {
       let old_value = context_stack[o].symbols[instruction.left.name];
-      context_stack[o].symbols[instruction.left.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+      context_stack[o].symbols[instruction.left.name] = interprete_instruction(instruction.right, context_stack);
       return old_value;
     }
   }
@@ -162,7 +164,7 @@ EXECUTORS[KINDS.DEFINE_SYMBOL] = function set_symbol(instruction, context_stack,
   );
 };
 
-EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_stack) {
   let last_context = context_stack[context_stack.length - 1];
   if (last_context.symbols.hasOwnProperty(instruction.name)) {
     throw new RuntimeError(
@@ -174,16 +176,16 @@ EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_s
   if (instruction.right === null) {
     last_context.symbols[instruction.name] = null;
   } else {
-    last_context.symbols[instruction.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+    last_context.symbols[instruction.name] = interprete_instruction(instruction.right, context_stack);
   }
 }
 
-EXECUTORS[KINDS.STRUCT] = function declare_struct(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.STRUCT] = function declare_struct(instruction, context_stack) {
   let last_context = context_stack[context_stack.length - 1];
   last_context.structs[instruction.name] = instruction;
 }
 
-EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) {
   let struct = find_struct_in_stack(instruction.name, context_stack);
   if (!struct) {
     throw new RuntimeError("No struct named " + instruction.name + " found.", instruction.line, instruction.char);
@@ -204,7 +206,7 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack, 
     instance.symbols[symbol] = struct.symbols[symbol].right;
   }
 
-  let args = interprete_instruction(instruction.args, context_stack, next_instructions);
+  let args = interprete_instruction(instruction.args, context_stack);
   let new_ctx = [...context_stack, {
     symbols: {
       self: {...instance, patterns: struct.patterns, structs: {}}
@@ -218,7 +220,7 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack, 
   return instance;
 }
 
-EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_stack, next_instructions) {
+EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_stack) {
   let parent = find_symbol_in_stack(instruction.parent.name, context_stack);
   if (parent.kind !== KINDS.STRUCT_INSTANCE) {
     throw new RuntimeError("Cannot access member of " + parent.kind.description, instruction.parent.line, instruction.parent.char);
@@ -230,12 +232,12 @@ EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_sta
 
   let old_value = parent.symbols[instruction.member.name];
 
-  parent.symbols[instruction.member.name] = interprete_instruction(instruction.right, context_stack, next_instructions);
+  parent.symbols[instruction.member.name] = interprete_instruction(instruction.right, context_stack);
 
   return old_value;
 }
 
-const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack, next_instructions) {
+const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack) {
   // struct instance
   let instance = find_symbol_in_stack(instruction.parent.name, context_stack);
   if (!instance) { // if the instance isn't defined
@@ -259,14 +261,14 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
         throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
       }
 
-      let args = interprete_instruction(instruction.member.args, context_stack, next_instructions);
+      let args = interprete_instruction(instruction.member.args, context_stack);
       let result = call_raw(pattern, [instance, ...args], context_stack);
       
       return result;
   }
 }
 
-const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expression(instruction, context_stack, next_instructions) {
+const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expression(instruction, context_stack) {
   let stack = [];
 
   for (let step of instruction.steps) {
@@ -282,10 +284,10 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           stack.push(step.state);
           break;
         case KINDS.TUPLE:
-          stack.push(interprete_instruction(step, context_stack, next_instructions));
+          stack.push(interprete_instruction(step, context_stack));
           break;
         case KINDS.PATTERN_CALL:
-          stack.push(call_pattern(step, context_stack, next_instructions));
+          stack.push(call_pattern(step, context_stack));
           break;
         case KINDS.FUNCTION_CALL:
           throw new Error("Unimplemented");
@@ -296,7 +298,7 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           stack.push(symbol);
           break;
         case KINDS.MEMBER_ACCESSOR:
-          let value = member_access(step, context_stack, next_instructions);
+          let value = member_access(step, context_stack);
           stack.push(value);
           break;
       }
