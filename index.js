@@ -4,4 +4,4 @@
 
 const args = require("yargs").argv;
 
-require("./patpat.js")(args._[0], args);
+require("./src/patpat.js")(args._[0], args);

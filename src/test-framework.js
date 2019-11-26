@@ -6,7 +6,7 @@ module.exports = function test(source) {
   let stdout = {
     write: (str) => output += str
   };
-  patpat(path.join(__dirname, `test/${source}`), {
+  patpat(path.join(__dirname, `../test/${source}`), {
     stdout,
     throwError: true
   });

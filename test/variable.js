@@ -1,6 +1,6 @@
 const {assert} = require("chai");
-const execute = require("../test-framework");
-const {RuntimeError, CompileError} = require("../errors.js");
+const execute = require("../src/test-framework");
+const {RuntimeError, CompileError} = require("../src/errors.js");
 
 describe("Variable declaration", () => {
   it("Should assign a value to a variable and print it to stdout", () => {
