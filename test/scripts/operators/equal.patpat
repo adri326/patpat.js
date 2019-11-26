@@ -8,3 +8,17 @@ let a: 4
 'assert(a == 4)
 let b: "I like wolves"
 'assert(b == "I like wolves")
+
+'assert(2 < 3)
+'assert(-1 < 0)
+'assert(-1 <= 0)
+'assert(0 <= 0)
+'assert(2 > 0)
+'assert(6 > -2)
+'assert(6 >= 0)
+'assert(0 >= 0)
+
+'assert("I like" != "birds")
+'assert(2 != 3)
+'assert("Horses are " != -56)
+'assert(true > false)

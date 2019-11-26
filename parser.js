@@ -285,7 +285,7 @@ new TermMatcher("STRING", /^"/, 800).append();
 new TermMatcher("DEFINE", /^:/, 900).append();
 new TermMatcher("SYMBOL", /^[a-z_][a-z_\d]*/, -200).append();
 new TermMatcher("TYPENAME", /^[A-Z][\w_\d]*/, -100).append();
-new TermMatcher("OPERATOR", /^(?:[+\-*\/!%]|&&|\|\||==)/, 700).append();
+new TermMatcher("OPERATOR", /^(?:&&|\|\||==|[<>]=?|!=|[+\-*\/!%])/, 700).append();
 new TermMatcher("NUMBER", /^-?\d+(?:\.\d*)?/, 800).append();
 new TermMatcher("BOOLEAN", /^(?:true|false)/, 500).append();
 new TermMatcher("ARROW", /^=>/, 1200).append();
@@ -305,5 +305,10 @@ OPERATORS = {
   "||": KINDS.OP_OR,
   "&&": KINDS.OP_AND,
   "!": KINDS.OP_NOT,
-  "==": KINDS.OP_EQ
+  "==": KINDS.OP_EQ,
+  "!=": KINDS.OP_NEQ,
+  ">": KINDS.OP_GT,
+  ">=": KINDS.OP_GTE,
+  "<": KINDS.OP_LT,
+  "<=": KINDS.OP_LTE
 }

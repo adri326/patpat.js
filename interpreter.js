@@ -1,6 +1,7 @@
 const KINDS = require("./kinds.js");
 const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {RuntimeError} = require("./errors.js");
+const prelude = require("./prelude.js");
 
 const EXECUTORS = {};
 
@@ -234,7 +235,7 @@ EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_sta
   return old_value;
 }
 
-EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack, next_instructions) {
+const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack, next_instructions) {
   // struct instance
   let instance = find_symbol_in_stack(instruction.parent.name, context_stack);
   if (!instance) { // if the instance isn't defined
@@ -294,86 +295,56 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           if (symbol === null) throw new RuntimeError("Undefined variable " + step.name, step.line, step.char);
           stack.push(symbol);
           break;
+        case KINDS.MEMBER_ACCESSOR:
+          let value = member_access(step, context_stack, next_instructions);
+          stack.push(value);
+          break;
       }
-    } else if (typeof step === "symbol" && BINARY_OPS.includes(step)) {
-      if (typeof stack[stack.length - 2] === "number") {
+    } else if (typeof step === "symbol") {
+      let operators;
+      let type_name;
+      let lhs = BINARY_OPS.includes(step) ? stack[stack.length - 2] : stack[stack.length - 1];
+
+      switch (typeof lhs) {
+        case "number":
+          operators = prelude.NUM_OPS;
+          type_name = "<number>";
+          break;
+        case "boolean":
+          operators = prelude.BOOL_OPS;
+          type_name = "<bool>";
+          break;
+        case "string":
+          operators = prelude.STR_OPS;
+          type_name = "<string>";
+          break;
+        case "object":
+        default:
+          throw new RuntimeError("Unimplemented: " + typeof lhs, instruction.line, instruction.char);
+      }
+
+      if (typeof operators[step] !== "function") {
+        throw new RuntimeError(`No (or invalid) operator '${step.description}' defined for ${type_name}`);
+      }
+
+      if (BINARY_OPS.includes(step)) { // If the operator is a binary operator, like + or ==
         let b = stack.pop();
-        if (Array.isArray(b) && b.length === 1) {
-          b = b[0];
-        }
         let a = stack.pop();
-        stack.push(NUM_OPS[step](a, b));
-      } else if (typeof stack[stack.length - 2] === "boolean") {
-        if (BOOL_OPS.hasOwnProperty(step)) {
-          let b = stack.pop();
-          if (Array.isArray(b) && b.length === 1) {
-            b = b[0];
-          }
-          let a = stack.pop();
-          stack.push(BOOL_OPS[step](a, b));
-        } else {
-          throw new RuntimeError("<bool> has no " + step.description + " method");
-        }
-      } else if (typeof stack[stack.length - 2] === "string") {
-        if (STR_OPS.hasOwnProperty(step)) {
-          let b = stack.pop();
-          if (Array.isArray(b) && b.length === 1) {
-            b = b[0];
-          }
-          let a = stack.pop();
-          stack.push(STR_OPS[step](a, b));
-        }
-      }
-    } else if (typeof step === "symbol" && UNARY_OPS.includes(step)) {
-      if (typeof stack[stack.length - 1] === "number") {
-        stack.push(NUM_OPS[step](stack.pop()));
-      } else if (typeof stack[stack.length - 1] === "boolean") {
-        if (BOOL_OPS.hasOwnProperty(step)) {
-          stack.push(BOOL_OPS[step](stack.pop()));
-        } else {
-          throw new RuntimeError("<bool> has no " + step.description + " method");
-        }
-      } else if (typeof stack[stack.length - 1] === "string") {
-        if (STR_OPS.hasOwnProperty(step)) {
-          stack.push(STR_OPS[step](stack.pop()));
-        } else {
-          throw new RuntimeError("<bool> has no " + step.description + " method");
-        }
+        let result = operators[step](a, b);
+
+        if (Array.isArray(result) && result.length === 1) result = result[0];
+        stack.push(result);
+      } else if (UNARY_OPS.includes(step)) { // If the operator is a unary operator, like !
+        let result = operators[step](stack.pop());
+
+        if (Array.isArray(result) && result.length === 1) result = result[0];
+        stack.push(result);
+      } else {
+        throw new RuntimeError(`Operator ${step.description} is neither a binary, nor a unary operator.`, instruction.line, instruction.char);
       }
     } else {
       throw new Error("Unimplemented");
     }
   }
   return stack[0];
-}
-
-const NUM_OPS = {
-  [KINDS.OP_ADD]: (a, b) => a + b,
-  [KINDS.OP_MUL]: (a, b) => a * b,
-  [KINDS.OP_SUB]: (a, b) => a - b,
-  [KINDS.OP_DIV]: (a, b) => a / b,
-  [KINDS.OP_MOD]: (a, b) => a % b,
-  [KINDS.OP_AND]: (a, b) => a & b,
-  [KINDS.OP_OR]: (a, b) => a | b,
-  [KINDS.OP_NOT]: a => ~a,
-  [KINDS.OP_EQ]: (a, b) => a === b
-};
-
-const BOOL_OPS = {
-  [KINDS.OP_AND]: (a, b) => a && b,
-  [KINDS.OP_OR]: (a, b) => a || b,
-  [KINDS.OP_NOT]: a => !a,
-  [KINDS.OP_EQ]: (a, b) => a === b
-};
-
-const STR_OPS = {
-  [KINDS.OP_ADD]: (a, b) => a + b,
-  [KINDS.OP_MUL]: (a, b) => {
-    if (typeof b === "number") {
-      return a.repeat(b);
-    } else {
-      throw new RuntimeError("Cannot multiply string with a number");
-    }
-  },
-  [KINDS.OP_EQ]: (a, b) => a === b
 }

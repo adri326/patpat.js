@@ -36,7 +36,7 @@ prelude.patterns = {
     kind: KINDS.PATTERN,
     name: "#if",
     args: [
-      {name: "condition",optional: false},
+      {name: "condition", optional: false},
       {name: "success", optional: false},
       {name: "error", optional: true, default: null}
     ],
@@ -44,25 +44,23 @@ prelude.patterns = {
       if (!success) {
         throw new RuntimeError("Invalid first argument type, expected FUNCTION or PATTERN, got " + success + " (in " + this.name + ")", line, char);
       }
-      if (success.kind !== KINDS.FUNCTION && success.kind !== KINDS.PATTERN) {
-        throw new RuntimeError("Invalid argument type, expected FUNCTION or PATTERN, got " + success.kind.description, success.line, success.char);
-      }
-      if (error && error.kind !== KINDS.FUNCTION && error.kind !== KINDS.PATTERN) {
-        throw new RuntimeError("Invalid argument type, expected FUNCTION or PATTERN, got " + error.kind.description, error.line, error.char);
-      }
 
       if (condition) {
-        if (success._execute) {
-          return success._execute([], context_stack, line, char);
-        } else {
-          return interpreter(success.body, context_stack);
-        }
-      } else if (error) {
-        if (error._execute) {
-          return condition._execute([], context_stack, line, char);
-        } else {
-          return interpreter(error.body, context_stack);
-        }
+        if (success && success.kind === KINDS.PATTERN || success.kind === KINDS.FUNCTION) {
+          if (success._execute) {
+            return success._execute([], context_stack, line, char);
+          } else {
+            return interpreter(success.body, context_stack);
+          }
+        } else return success;
+      } else if (typeof error !== "undefined" && typeof error !== "null") {
+        if (error.kind === KINDS.PATTERN || error.kind === KINDS.FUNCTION) {
+          if (error._execute) {
+            return condition._execute([], context_stack, line, char);
+          } else {
+            return interpreter(error.body, context_stack);
+          }
+        } else return error;
       } else {
         return null;
       }
@@ -174,3 +172,47 @@ prelude.symbols = {
 };
 
 prelude.structs = {};
+
+
+const NUM_OPS = module.exports.NUM_OPS = {
+  [KINDS.OP_ADD]: (a, b) => a + b,
+  [KINDS.OP_MUL]: (a, b) => a * b,
+  [KINDS.OP_SUB]: (a, b) => a - b,
+  [KINDS.OP_DIV]: (a, b) => a / b,
+  [KINDS.OP_MOD]: (a, b) => a % b,
+  [KINDS.OP_AND]: (a, b) => a & b,
+  [KINDS.OP_OR]: (a, b) => a | b,
+  [KINDS.OP_NOT]: a => ~a,
+  [KINDS.OP_EQ]: (a, b) => a === b,
+  [KINDS.OP_NEQ]: (a, b) => a !== b,
+  [KINDS.OP_LT]: (a, b) => a < b,
+  [KINDS.OP_LTE]: (a, b) => a <= b,
+  [KINDS.OP_GT]: (a, b) => a > b,
+  [KINDS.OP_GTE]: (a, b) => a >= b
+};
+
+const BOOL_OPS = module.exports.BOOL_OPS = {
+  [KINDS.OP_AND]: (a, b) => a && b,
+  [KINDS.OP_OR]: (a, b) => a || b,
+  [KINDS.OP_NOT]: a => !a,
+  [KINDS.OP_EQ]: (a, b) => a === b,
+  [KINDS.OP_NEQ]: (a, b) => a === b,
+  [KINDS.OP_LT]: (a, b) => !a && b,
+  [KINDS.OP_LTE]: (a, b) => !a || b,
+  [KINDS.OP_GT]: (a, b) => a && !b,
+  [KINDS.OP_GTE]: (a, b) => a || !b
+};
+
+const STR_OPS = module.exports.STR_OPS = {
+  [KINDS.OP_ADD]: (a, b) => a + b,
+  [KINDS.OP_MUL]: (a, b) => {
+    if (typeof b === "number") {
+      return a.repeat(b);
+    } else {
+      throw new RuntimeError("Cannot multiply string with a number");
+    }
+  },
+  [KINDS.OP_EQ]: (a, b) => a === b,
+  [KINDS.OP_NEQ]: (a, b) => a !== b
+}
+
