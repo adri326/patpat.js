@@ -6,6 +6,11 @@ const {CompileError} = require("./errors.js");
 let lines;
 
 module.exports = function parser(raw) {
+  /*! parser(raw: String): ParsedTree
+    It initializes the tree parsing procedure, by creating the tree's roots and executing #parse_body.
+
+    @param raw Raw code
+  */
   lines = raw.split(/\n/g);
   let terms = get_terms(raw);
 
@@ -19,9 +24,14 @@ module.exports = function parser(raw) {
 };
 
 function parse_body(sub_terms, branch, options) {
-  /*? Recursive function which parses the body of the code
-      It tries to match every term against a set of symbol matchers (MATCHERS)
-      Once this is done, it processes them.
+  /*! parse_body(sub_terms: Array[TermMatcher], branch: ParsedTree, options: Object {ctx_kind: String, is_block: bool})
+    Recursive function which parses the body of the code.
+    It checks which TermMatcher matched the code, eventually does some transformation if it needs to and appends a Term to the `branch.terms` array.
+    Lastly, it sends the branch to `mangle.js`, which will put these terms together into instructions.
+
+    @param sub_terms A sub-array of the matched terms
+    @param branch The current branch, in which terms are registered
+    @param options An object containing options for the parser to figure out what context it is in
   */
 
   let n = 0;
@@ -158,7 +168,12 @@ function parse_body(sub_terms, branch, options) {
 }
 
 function get_terms(raw) {
-  // Splits the input string in lines and in "terms", which are wordlet. It indicates their position and by which matcher it was matched
+  /*! get_terms(raw: String): Array[TermMatcher]
+    Splits the input string into individual tokens - terms and returns an array of TermMatcher.
+
+    @param raw Input string
+    @return Array[TermMatcher]
+  */
 
   let lines = raw.split(/\r?\n/g);
   let terms = lines.reduce((acc, line, i) => {
@@ -224,6 +239,12 @@ function get_terms(raw) {
 }
 
 function match_term(term) {
+  /*! match_term(term: String): TermMatcher
+    Tries to match the given term with the TermMatchers and returns the first one that successfully matched.
+
+    @param term Input string, trimmed to the beginning of the term that we are interested in.
+    @return TermMatcher
+  */
   let match = null;
   for (let matcher of MATCHERS) {
     match = matcher.match(term);
@@ -233,6 +254,12 @@ function match_term(term) {
 }
 
 function parse_string_escapes(str) {
+  /*! parse_string_escapes(str: String): String
+    Converts string escapes (like `\n`, `\"`) into their corresponding character.
+
+    @param str Input string
+    @return String
+  */
   return str.replace(/\\"/g, '"')
     .replace(/\\n/g, '\n')
     .replace(/\\\\/g, '\\');
@@ -241,6 +268,9 @@ function parse_string_escapes(str) {
 let MATCHERS = [];
 
 class TermMatcher {
+  /*! class TermMatcher
+    An object which matches terms (tokens). It contains its name, expression, priority and a symbol.
+  */
   constructor(name, match, priority = 0) {
     this.name = name;
     this.match_expr = match;

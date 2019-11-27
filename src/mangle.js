@@ -2,14 +2,21 @@ const KINDS = require("./kinds.js");
 const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {CompileError} = require("./errors.js");
 
-//? This module takes all of the terms given by the parser and puts them together. It does this through different passes
+//! This module takes all of the terms given by the parser and puts them together. It does this through different passes
 // NOTE: this module should handle type errors
 
 module.exports = function mangle_body(branch, options) {
-  branch.instructions = branch.terms.concat([]);
+  /*! mangle_body(branch: ParsedTree, options; Object {ctx_kind: String, is_tuple: bool, is_array: bool})
+    This method calls the different mangling stages, which puts terms together to create complex instructions.
+
+    `branch.instructions` is where all the magic is done. It is, at the beginning, the `branch.terms` array.
+    Every mangling transformation is done on the `branch.instructions`.
+    If I did not mess this up, the transformations should be strongly normalizing.
+  */
+  branch.instructions = branch.terms.slice();
 
   mangle_functions(branch, options);
-  mangle_types(branch, options);
+  mangle_struct(branch, options);
   mangle_calls(branch, options);
   mangle_accessors(branch, options);
   mangle_unary_expressions(branch, options);
@@ -27,6 +34,12 @@ module.exports = function mangle_body(branch, options) {
 }
 
 function mangle_declaration(branch, {ctx_kind, is_tuple, is_array}) {
+  /*! mangle_declaration(<..>)
+    This mangler handles the `let` keyword. It looks for `LET` terms.
+    If a `LET` term is followed by a `SYMBOL`, it replaces both with a `DECLARE_SYMBOL` without default value.
+    If a `LET` term is followed by a `DEFINE_SYMBOL`, it replaces both with a `DECLARE_SYMBOL` and a default value, extracted from the second term.
+    It does not support tuple destructurisation yet.
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.LET) {
       if (n === branch.instructions.length - 1) {
@@ -73,6 +86,13 @@ function mangle_declaration(branch, {ctx_kind, is_tuple, is_array}) {
 }
 
 function mangle_define(branch) {
+  /*! mangle_define(branch: ParsedTree)
+    This mangler handles the `=` keyword. It looks at the kind of the instruction/term preceding it:
+    - `SYMBOL`: inserts a `DEFINE_SYMBOL` instruction
+    - `EXPRESSION`, `TUPLE`, `FUNCTION_CALLL`: inserts a `DEFINE_COMPLEX` instruction
+    - `PATTERN`: inserts a `DEFINE_PATTERN` instruction
+    - `MEMBER_ACCESSORS`: inserts a `DEFINE_MEMBER` instruction
+  */
   // this has to sweep from right to left, as to handle this kind of assignement:
   // a: b: a
   for (let n = branch.instructions.length - 1; n >= 0; n--) {
@@ -148,6 +168,11 @@ function mangle_define(branch) {
 }
 
 function mangle_calls(branch) {
+  /*! mangle_calls(branch: ParsedTree)
+    This function handles terms followed by a tuple `(a; b; ...)`, which are function calls.
+    (Who on earth decided that it should be written this way? f(x)?! How can I decide if the tuple should be there or not?).
+    If the left-hand-side term is a `TUPLE`, `FUNCTION_CALL`, `PATTERN_CALL`, `SYMBOL` or `PATTERN`, then it will insert a `PATTERN_CALL` (if lhs is `PATTERN`) or a `FUCTION_CALL`.
+  */
   for (let n = 0; n < branch.instructions.length - 1; n++) {
     let c_kind = branch.instructions[n].kind;
     if (
@@ -191,6 +216,11 @@ function mangle_calls(branch) {
 }
 
 function mangle_unary_expressions(branch, {ctx_kind}) {
+  /*! mangle_unary_expressions(branch: ParsedTree, options: Object {ctx_kind: String})
+    Mangles unary expressions, that is, `!a` & such.
+    If it finds such an operator, it inserts an `EXPRESSION`, replacing and containing the following operators up to the next non-operator term.
+    Parsed-down expressions are in reverse polish notation, for convenience.
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (
       branch.instructions[n].kind === KINDS.OPERATOR
@@ -230,6 +260,19 @@ function mangle_unary_expressions(branch, {ctx_kind}) {
 }
 
 function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
+  /*! mangle_expressions(branch: ParsedTree, options; Object {ctx_kind: String, is_tuple: bool, is_array: bool})
+    Looks for non-unary `OPERATOR`s, and mangles everything around them that should be part of the expression into what will be an expression.
+    It does not allow operator precedence, that is, if around it, another `OPERATOR`, that isn't the same as itself, is found, it will throw an error.
+    Expressions are parsed down into reverse polish notation. The plan could then be to convert it to polish notation and then to lower-level assembly code.
+
+    The first step in the function is to look for a binary operator, and check the types around it.
+    It then looks forward to try to find another operator, and appends the elements in-between operators to the `elements` array.
+    It then takes these elements, and parses them down into the `steps` array. If any of these elements is another TUPLE/EXPRESSION, it will insert its steps to the `steps` array instead.
+    At the end of the day, we have a somewhat recursive expression parser. Which works.
+
+    The 2nd version of the compiler should include a RPN to ASM generator. Here's a link for myself:
+    https://compilers.iecc.com/crenshaw/tutor2.txt
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.OPERATOR) {
       if (n === 0) {
@@ -293,6 +336,10 @@ function mangle_expressions(branch, {is_tuple, is_array, ctx_kind}) {
 }
 
 function mangle_functions(branch) {
+  /*! mangle_functions(branch: ParsedTree)
+    Handles the `=>` (`ARROW`) symbol. It should be preceded by a `TUPLE` and followed by a `BLOCK`.
+    It inserts a `FUNCTION` instruction.
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.ARROW) {
       if (branch.instructions[n - 1].kind !== KINDS.TUPLE && branch.instructions[n - 1].kind !== KINDS.ARRAY) {
@@ -356,7 +403,11 @@ function mangle_functions(branch) {
   }
 }
 
-function mangle_types(branch, options) {
+function mangle_struct(branch, options) {
+  /*! mangle_struct(branch: ParsedTree, options; Object {ctx_kind: String, is_tuple: bool, is_array: bool})
+    Handles `struct` keywords (`STRUCT`).
+    It looks at its body, and appends any symbol or pattern found in it.
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.STRUCT) {
       if (n >= branch.instructions.length - 2) {
@@ -400,6 +451,12 @@ function mangle_types(branch, options) {
 }
 
 function mangle_accessors(branch, options) {
+  /*! mangle_accessors(branch: ParsedTree, options; Object {ctx_kind: String, is_tuple: bool, is_array: bool})
+    Handles the `.` (`MEMBER_ACCESSOR`) keyword.
+    Valid terms on the left are `PATTERN_CALL`, `TUPLE`, `SYMBOL`, `TYPENAME`.
+    If it is a `TYPENAME` and followed by a `PATTERN_CALL`, it inserts a `STRUCT_INIT` instruction.
+    Otherwise, it inserts a `MEMBER_ACCESSOR` instruction.
+  */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.MEMBER_ACCESSOR) {
       if (n === 0) {
@@ -442,6 +499,9 @@ function mangle_accessors(branch, options) {
 }
 
 function strip_separators(branch) {
+  /*! strip_separators(branch: ParsedTree)
+    Removes `SEPARATOR`s (`;`) from the instructions array.
+  */
   branch.instructions = branch.instructions.filter(x => x.kind !== KINDS.SEPARATOR);
 }
 
