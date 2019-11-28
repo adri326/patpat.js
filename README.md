@@ -12,9 +12,9 @@ Clone this repository, and you'll be good to go!
 
 ## Example
 
-```
+```patpat
 'factorial: (n) => {
-  #if(n; () => {
+  #if(n > 0; () => {
     'factorial(n - 1) * n
   }; () => {
     1
@@ -27,4 +27,5 @@ Clone this repository, and you'll be good to go!
 ```
 
 This will print the factorials of the natural numbers from 0 to 9.
-More explanation & such to go.
+
+Some kind of tutorial should come in the future. If can have a look at its [formal definition](definition.md).
