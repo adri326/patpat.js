@@ -30,7 +30,7 @@ NUMBER = ["-"], digits, {".", digits};
 
 ```ebnf
 STRING = '"', {string-token}, '"';
-string_token = "\\n" | '\\"' | (all_characters - '"'); All the non-trema characters;
+string_token = "\\n" | '\\"' | (all_characters - '"'); (* All the non-trema characters *)
 ```
 
 **e.g:** `"I am \n\"glad" to meet you."`
