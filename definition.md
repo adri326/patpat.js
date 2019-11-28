@@ -212,12 +212,12 @@ DEFINE_COMPLEX = (TUPLE | FUNCTION_CALL | PATTERN_CALL), {whitespace}, DEFINE, {
 Blocks are where instructions are executed.
 They contain a list of instructions, which will be executed one after the other.
 
-These instructions are separated either with newlines, or a `NEXT_ELEMENT`. (*TODO*).
+These instructions are separated either with newlines, or a `NEXT_ELEMENT`.
 
 Their return value is that of the last instruction.
 
 ```ebnf
-BLOCK_EXPRESSIONS = DECLARE_SYMBOL | DEFINE_PATTERN | STRUCT;
+BLOCK_EXPRESSIONS = DECLARE_SYMBOL | DEFINE_PATTERN | STRUCT | "";
 BLOCK_BODY = {{whitespace}, [EXPRESSION | BLOCK_EXPRESSIONS], {whitespace}, (NEXT_ELEMENT | "\n")};
 BLOCK = "{", BLOCK_BODY, "}";
 ```
@@ -227,7 +227,8 @@ BLOCK = "{", BLOCK_BODY, "}";
 ```patpat
 {
   instruction_1;
-  instruction_2;
+  instruction_2
+  instruction_3
 }
 ```
 
@@ -252,7 +253,7 @@ VALID_EXP_TERM = STRING
   | DEFINE_MEMBER
   | DEFINE_SYMBOL
   | DEFINE_COMPLEX
-  | BLOCK ; (* TODO *)
+  | BLOCK;
 
 UNARY_EXPRESSION = {UNARY_OPERATOR, {whitespace}}, VALID_EXP_TERM;
 EXPRESSION = UNARY_EXPRESSION, {{whitespace}, BINARY_OPERATOR, {whitespace}, UNARY_EXPRESSION};
