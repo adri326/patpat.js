@@ -410,18 +410,22 @@ function mangle_struct(branch, options) {
   */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.STRUCT) {
-      if (n >= branch.instructions.length - 2) {
+      if (n >= branch.instructions.length - 1) {
         throw new CompileError("struct keyword at end of " + options.ctx_kind, branch.instructions[n].line, branch.instructions[n].char);
-      } else if (branch.instructions[n + 1].kind !== KINDS.TYPENAME) {
-        throw new CompileError("Invalid term following struct: " + branch.instructions[n + 1].kind.description, branch.instructions[n + 1].line, branch.instructions[n + 1].char);
-      } else if (branch.instructions[n + 2].kind !== KINDS.BLOCK) {
-        throw new CompileError("Invalid term following struct: " + branch.instructions[n + 2].kind.description, branch.instructions[n + 2].line, branch.instructions[n + 2].char);
+      } else if (n <= 1) {
+        throw new CompileError("struct keyword at start of " + options.ctx_kind, branch.instructions[n].line, branch.instructions[n].char);
+      } else if (branch.instructions[n - 1].kind !== KINDS.DEFINE) {
+        throw new CompileError("struct keyword not preceded by a `:`", branch.instructions[n].line, branch.instructions[n].char);
+      } else if (branch.instructions[n - 2].kind !== KINDS.TYPENAME) {
+        throw new CompileError("struct keyword not preceded by a `TypeName` and a `:`", branch.instructions[n].line, branch.instructions[n].char);
+      } else if (branch.instructions[n + 1].kind !== KINDS.BLOCK) {
+        throw new CompileError("Invalid term following a struct keyword: expected BLOCK", branch.instructions[n + 1].line, branch.instructions[n + 1].char);
       }
 
       let symbols = {};
       let patterns = {};
 
-      for (let instruction of branch.instructions[n + 2].instructions) {
+      for (let instruction of branch.instructions[n + 1].instructions) {
         if (instruction.kind === KINDS.DECLARE_SYMBOL) {
           symbols[instruction.name] = {
             kind: KINDS.DECLARE_SYMBOL,
@@ -440,12 +444,12 @@ function mangle_struct(branch, options) {
 
       insert(branch, {
         kind: KINDS.STRUCT,
-        name: branch.instructions[n + 1].name,
+        name: branch.instructions[n - 2].name,
         symbols,
         patterns,
         line: branch.instructions[n].line,
         char: branch.instructions[n].char
-      }, n, 3);
+      }, n - 2, 4);
     }
   }
 }

@@ -1,4 +1,4 @@
-struct Snowball {
+Snowball: struct {
   let weight: 0
 
   'throw: (#self(); target) => {
