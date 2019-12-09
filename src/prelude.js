@@ -3,6 +3,7 @@ const KINDS = require("./kinds.js");
 const interpreter = require("./interpreter.js");
 const prelude = module.exports;
 const {RuntimeError} = require("./errors.js");
+const Context = require("./context.js");
 
 prelude.patterns = {
   "'println": {
@@ -50,7 +51,7 @@ prelude.patterns = {
           if (success._execute) {
             return success._execute([], context_stack, line, char);
           } else {
-            return interpreter(success.body, context_stack);
+            return interpreter.call_raw(success, [], context_stack);
           }
         } else return success;
       } else if (typeof error !== "undefined" && typeof error !== "null") {
@@ -58,7 +59,7 @@ prelude.patterns = {
           if (error._execute) {
             return condition._execute([], context_stack, line, char);
           } else {
-            return interpreter(error.body, context_stack);
+            return interpreter.call_raw(error, [], context_stack);
           }
         } else return error;
       } else {
@@ -102,6 +103,49 @@ prelude.patterns = {
           return result[1];
         }
         last_value = result;
+      }
+      return last_value;
+    }
+  },
+  "#while": {
+    kind: KINDS.PATTERN,
+    args: [
+      {name: "condition"},
+      {name: "loop", optional: true}
+    ],
+    _execute: ([condition, loop], context_stack, line, char) => {
+      if (!condition || condition.kind !== KINDS.FUNCTION && condition.kind !== KINDS.PATTERN) {
+        throw new RuntimeError("Invalid argument for #while: first argument should be a FUNCTION or PATTERN", line, char);
+      }
+
+      if (!loop && loop.kind !== KINDS.FUNCTION && loop.kind !== KINDS.PATTERN) {
+        throw new RuntimeError("Invalid argument for #while: second argument should be a FUNCTION, PATTERN or absent", line, char);
+      }
+
+      let execute_condition;
+      if (typeof condition._execute === "function") {
+        execute_condition = function execute_condition() {
+          return fn._execute([], context_stack, line, char);
+        };
+      } else {
+        execute_condition = function execute_condition() {
+          return interpreter.call_raw(condition, [], context_stack);
+        };
+      }
+      let last_value = null;
+      while (execute_condition()) {
+        let result;
+        if (loop) {
+          if (loop._execute) {
+            result = loop._execute([], context_stack, line, char);
+          } else {
+            result = interpreter.call_raw(loop, [], context_stack);
+          }
+          if (Array.isArray(result) && result[0] === prelude.symbols.__break) {
+            return result[1] !== null ? result : last_value;
+          }
+          last_value = result;
+        }
       }
       return last_value;
     }

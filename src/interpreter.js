@@ -2,6 +2,7 @@ const KINDS = require("./kinds.js");
 const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {RuntimeError} = require("./errors.js");
 const prelude = require("./prelude.js");
+const Context = require("./context.js");
 
 const EXECUTORS = {};
 
@@ -13,6 +14,9 @@ const interpreter = module.exports = function interpreter(branch, stack) {
   // NOTE: Patterns are read ahead
   for (let instruction of branch.instructions) {
     if (instruction.kind === KINDS.DEFINE_PATTERN) {
+      if (instruction.name.startsWith("#")) {
+        throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", left.line, left.char);
+      }
       last_context.patterns[instruction.name] = instruction;
     }
   }
@@ -52,7 +56,7 @@ const find_struct_in_stack = module.exports.find_struct_in_stack = function find
   return null;
 }
 
-function interprete_instruction(instruction, context_stack) {
+const interprete_instruction = module.exports.interprete_instruction = function interprete_instruction(instruction, context_stack) {
   let last_context = context_stack[context_stack.length - 1];
 
   if (EXECUTORS.hasOwnProperty(instruction.kind)) {
@@ -97,18 +101,13 @@ const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(in
 }
 
 const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack) {
-  let new_ctx = {
-    symbols: {},
-    patterns: {},
-    structs: {},
-    last_value: null
-  };
+  let new_ctx = new Context();
 
   for (let n = 0; n < fn.args.length; n++) {
     new_ctx.symbols[fn.args[n].name] = args[n];
   }
 
-  return interpreter(fn.body, [...(fn.context_stack || context_stack), new_ctx]);
+  return interpreter(fn.body, new_ctx.tail(fn.context_stack || context_stack));
 }
 
 EXECUTORS[KINDS.NUMBER] = (instruction) => instruction.number;
@@ -200,43 +199,33 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) 
     throw new RuntimeError(`Pattern ${instruction.pattern.name} is not a constructor.`, instruction.line, instruction.char);
   }
 
-  let instance = {
-    kind: KINDS.STRUCT_INSTANCE,
-    parent: struct,
-    symbols: {}
-  };
-
-  for (let symbol in struct.symbols) {
-    instance.symbols[symbol] = struct.symbols[symbol].right;
-  }
+  let instance = struct.instance();
 
   let args = interprete_instruction(instruction.args, context_stack);
-  let new_ctx = [...context_stack, {
-    symbols: {
-      self: {...instance, patterns: struct.patterns, structs: {}}
-    },
-    patterns: {},
-    structs: {}
-  }];
+  let new_ctx = new Context({
+    self: {...instance, patterns: struct.patterns, structs: {}}
+  });
 
-  call_raw(pattern, instruction.args, new_ctx);
+  call_raw(pattern, instruction.args, new_ctx.tail(context_stack));
 
   return instance;
 }
 
 EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_stack) {
-  let parent = find_symbol_in_stack(instruction.parent.name, context_stack);
-  if (parent.kind !== KINDS.STRUCT_INSTANCE) {
+  let instance = find_symbol_in_stack(instruction.parent.name, context_stack);
+  if (!instance) {
+    throw new RuntimeError("Variable not found: " + instruction.parent.name, instruction.parent.line, instruction.parent.char);
+  } else if (instance.kind !== KINDS.STRUCT_INSTANCE) {
     throw new RuntimeError("Cannot access member of " + parent.kind.description, instruction.parent.line, instruction.parent.char);
   }
 
-  if (!parent.symbols.hasOwnProperty(instruction.member.name)) {
+  if (!instance.symbols.hasOwnProperty(instruction.member.name)) {
     throw new RuntimeError("Variable not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
   }
 
-  let old_value = parent.symbols[instruction.member.name];
+  let old_value = instance.symbols[instruction.member.name];
 
-  parent.symbols[instruction.member.name] = interprete_instruction(instruction.right, context_stack);
+  instance.symbols[instruction.member.name] = interprete_instruction(instruction.right, context_stack);
 
   return old_value;
 }
@@ -313,6 +302,7 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
       let operators;
       let type_name;
       let lhs = BINARY_OPS.includes(step) ? stack[stack.length - 2] : stack[stack.length - 1];
+      if (Array.isArray(lhs) && lhs.length === 1) lhs = lhs[0];
 
       switch (typeof lhs) {
         case "number":
@@ -328,6 +318,12 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           type_name = "<string>";
           break;
         case "object":
+          if (lhs.kind === KINDS.STRUCT_INSTANCE) {
+            operators = lhs.parent.operators;
+            type_name = lhs.parent.name;
+            break;
+          }
+          // fallthrough
         default:
           throw new RuntimeError("Unimplemented: " + typeof lhs, instruction.line, instruction.char);
       }
@@ -339,12 +335,19 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
       if (BINARY_OPS.includes(step)) { // If the operator is a binary operator, like + or ==
         let b = stack.pop();
         let a = stack.pop();
-        let result = operators[step](a, b);
+        let new_stack = context_stack;
+        if (a.kind === KINDS.STRUCT_INSTANCE) {
+          console.log(a);
+          new_stack = new Context({
+            self: {...a, patterns: a.parent.patterns, structs: {}}
+          }).tail(context_stack);
+        }
+        let result = operators[step](a, b, new_stack);
 
         if (Array.isArray(result) && result.length === 1) result = result[0];
         stack.push(result);
       } else if (UNARY_OPS.includes(step)) { // If the operator is a unary operator, like !
-        let result = operators[step](stack.pop());
+        let result = operators[step](stack.pop(), null, new_stack);
 
         if (Array.isArray(result) && result.length === 1) result = result[0];
         stack.push(result);

@@ -21,6 +21,7 @@ describe("Program flow: if, for, etc.", () => {
       }, RuntimeError);
     });
   });
+
   describe("#for", () => {
     it("Should loop according to the given amount", () => {
       let result = execute("scripts/flow/for.patpat");
@@ -31,6 +32,17 @@ describe("Program flow: if, for, etc.", () => {
       assert.throws(() => {
         execute("scripts/flow/for-nea.patpat");
       }, RuntimeError);
+    });
+  });
+
+  describe("#while", () => {
+    it("Should loop over until the condition becomes false", () => {
+      let result = execute("scripts/flow/while.patpat");
+      let expected = "";
+      for (let x = 1; x <= 10; x++) {
+        expected += x + "\n";
+      }
+      assert.equal(result, expected);
     });
   });
 });

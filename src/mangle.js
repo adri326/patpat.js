@@ -1,6 +1,7 @@
 const KINDS = require("./kinds.js");
 const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {CompileError} = require("./errors.js");
+const Struct = require("./struct.js");
 
 //! This module takes all of the terms given by the parser and puts them together. It does this through different passes
 // NOTE: this module should handle type errors
@@ -136,9 +137,6 @@ function mangle_define(branch) {
         if (right.kind !== KINDS.FUNCTION) {
           throw new CompileError("Pattern definitions must be followed by a function", right.line, right.char);
         }
-        if (left.name.startsWith("#")) {
-          throw new CompileError("Patterns starting with # are reserved to the compiler. Please use ' instead.", left.line, left.char)
-        }
         instruction = {
           kind: KINDS.DEFINE_PATTERN,
           name: left.name,
@@ -171,7 +169,7 @@ function mangle_calls(branch) {
   /*! mangle_calls(branch: ParsedTree)
     This function handles terms followed by a tuple `(a; b; ...)`, which are function calls.
     (Who on earth decided that it should be written this way? f(x)?! How can I decide if the tuple should be there or not?).
-    If the left-hand-side term is a `TUPLE`, `FUNCTION_CALL`, `PATTERN_CALL`, `SYMBOL` or `PATTERN`, then it will insert a `PATTERN_CALL` (if lhs is `PATTERN`) or a `FUCTION_CALL`.
+    If the left-hand-side term is a `TUPLE`, `FUNCTION_CALL`, `PATTERN_CALL`, `SYMBOL` or `PATTERN`, then it will insert a `PATTERN_CALL` (if lhs is `PATTERN`) or a `FUNCTION_CALL`.
   */
   for (let n = 0; n < branch.instructions.length - 1; n++) {
     let c_kind = branch.instructions[n].kind;
@@ -410,6 +408,7 @@ function mangle_struct(branch, options) {
   */
   for (let n = 0; n < branch.instructions.length; n++) {
     if (branch.instructions[n].kind === KINDS.STRUCT) {
+      // Behold, there comes the error wall
       if (n >= branch.instructions.length - 1) {
         throw new CompileError("struct keyword at end of " + options.ctx_kind, branch.instructions[n].line, branch.instructions[n].char);
       } else if (n <= 1) {
@@ -442,14 +441,13 @@ function mangle_struct(branch, options) {
         }
       }
 
-      insert(branch, {
-        kind: KINDS.STRUCT,
+      insert(branch, new Struct({
         name: branch.instructions[n - 2].name,
         symbols,
         patterns,
         line: branch.instructions[n].line,
         char: branch.instructions[n].char
-      }, n - 2, 4);
+      }), n - 2, 4);
     }
   }
 }
@@ -473,7 +471,7 @@ function mangle_accessors(branch, options) {
         throw new CompileError("Invalid term preceding a member accessor", branch.instructions[n - 1].line, branch.instructions[n - 1].char);
       }
       // TODO: implement more ways to access members of a struct (tuple, pattern)
-      if (![KINDS.SYMBOL, KINDS.PATTERN_CALL].includes(branch.instructions[n + 1].kind)) {
+      if (![KINDS.SYMBOL, KINDS.PATTERN_CALL, KINDS.FUNCTION_CALL].includes(branch.instructions[n + 1].kind)) {
         throw new CompileError("Invalid term following a member accessor", branch.instructions[n + 1].line, branch.instructions[n + 1].char);
       }
 

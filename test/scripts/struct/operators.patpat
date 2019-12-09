@@ -1,0 +1,25 @@
+Vec2: struct {
+  let x: 0
+  let y: 0
+
+  'new: (x; y) => {
+    self.x: x
+    self.y: y
+  }
+
+  'println: (#self()) => {
+    'println(self.x; self.y)
+  }
+
+  #add: (#self(); v) => {
+    Vec2.'new(self.x + v.x; self.y + v.y)
+  }
+}
+
+let a: Vec2.'new(2; 3)
+let b: Vec2.'new(-1; -2)
+a.'println()
+b.'println()
+let c: a + b
+c.'println()
+(a + b).'println()

@@ -66,6 +66,24 @@ KINDS.UNARY_OPS = [
   KINDS.OP_NOT
 ];
 
+KINDS.OPERATORS = [].concat(KINDS.BINARY_OPS, KINDS.UNARY_OPS);
+
+KINDS.OPERATOR_EQUIVS = [
+  [KINDS.OP_ADD, "#add"],
+  [KINDS.OP_MUL, "#mul"],
+  [KINDS.OP_SUB, "#sub"],
+  [KINDS.OP_DIV, "#div"],
+  [KINDS.OP_MOD, "#mod"],
+  [KINDS.OP_AND, "#and"],
+  [KINDS.OP_OR, "#or"],
+  [KINDS.OP_EQ, "#eq"],
+  [KINDS.OP_NEQ, "#neq"],
+  [KINDS.OP_GT, "#gt"],
+  [KINDS.OP_GTE, "#gte"],
+  [KINDS.OP_LT, "#lt"],
+  [KINDS.OP_LTE, "#lte"]
+];
+
 KINDS.VALID_EXP_TERMS = [
   KINDS.STRING,
   KINDS.NUMBER,
