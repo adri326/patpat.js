@@ -56,11 +56,15 @@ const find_struct_in_stack = module.exports.find_struct_in_stack = function find
   return null;
 }
 
-const interprete_instruction = module.exports.interprete_instruction = function interprete_instruction(instruction, context_stack) {
+const interprete_instruction = module.exports.interprete_instruction = function interprete_instruction(instruction, context_stack, collapse_tuples = false) {
   let last_context = context_stack[context_stack.length - 1];
 
   if (EXECUTORS.hasOwnProperty(instruction.kind)) {
-    return EXECUTORS[instruction.kind](instruction, context_stack);
+    let result = EXECUTORS[instruction.kind](instruction, context_stack);
+    if (collapse_tuples && Array.isArray(result) && result.length === 1) {
+      result = result[0];
+    }
+    return result;
   }
 }
 
@@ -231,19 +235,20 @@ EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_sta
 }
 
 const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack) {
+  // struct instance
   let instance;
 
-  console.log(instruction.parent);
+  if (typeof instruction.parent.kind === KINDS.SYMBOL) {
+    instance = find_symbol_in_stack(instruction.parent.name, context_stack);
+  } else {
+    instance = interprete_instruction(instruction.parent, context_stack, true);
+  }
 
-  // struct instance
-  instance = find_symbol_in_stack(instruction.parent.name, context_stack);
-  
   if (!instance) { // if the instance isn't defined
-    // console.log(context_stack);
     throw new RuntimeError("Variable not found", instruction.line, instruction.char);
   }
   if (instance.kind !== KINDS.STRUCT_INSTANCE) { // if the instance isn't a struct
-    throw new RuntimeError("Cannot access member of " + parent.kind.description, instruction.parent.line, instruction.parent.char);
+    throw new RuntimeError("Cannot access member of " + instruction.parent.kind.description, instruction.parent.line, instruction.parent.char);
   }
 
   switch (instruction.member.kind) {

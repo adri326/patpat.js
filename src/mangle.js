@@ -175,8 +175,6 @@ function mangle_calls(branch) {
     let c_kind = branch.instructions[n].kind;
     if (
       c_kind === KINDS.TUPLE && branch.instructions[n].length === 1
-      || c_kind === KINDS.FUNCTION_CALL
-      || c_kind === KINDS.PATTERN_CALL
       || c_kind === KINDS.SYMBOL
       || c_kind === KINDS.PATTERN
     ) {
@@ -448,6 +446,7 @@ function mangle_struct(branch, options) {
         line: branch.instructions[n].line,
         char: branch.instructions[n].char
       }), n - 2, 4);
+      n -= 2;
     }
   }
 }
@@ -485,6 +484,7 @@ function mangle_accessors(branch, options) {
             line: branch.instructions[n - 1].line,
             char: branch.instructions[n - 1].char
           }, n - 1, 3);
+          n--;
           continue;
         }
       }
@@ -496,6 +496,7 @@ function mangle_accessors(branch, options) {
         line: branch.instructions[n - 1].line,
         char: branch.instructions[n - 1].char
       }, n - 1, 3);
+      n--;
     }
   }
 }
