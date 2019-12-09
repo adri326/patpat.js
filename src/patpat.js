@@ -16,7 +16,7 @@ module.exports = function (source_path, args) {
   try {
     tree = parser(raw);
     if (args.dumpTree) console.log(util.inspect(tree, {showHidden: false, depth: null}));
-    interpreter(tree, [prelude]);
+    interpreter.interprete(tree, [prelude]);
   } catch (e) {
     if (args.throwError) throw e;
     if (e instanceof CompileError || e instanceof RuntimeError) {

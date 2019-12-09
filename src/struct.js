@@ -17,7 +17,7 @@ module.exports = class Struct {
       let matching_operator = KINDS.OPERATOR_EQUIVS.find(([a, b]) => b === name);
       if (matching_operator) {
         this.operators[matching_operator[0]] = function struct_operator(a, b, context_stack) {
-          interpreter.call_raw(pattern, [a, b], context_stack);
+          return interpreter.call_raw(pattern, [a, b], context_stack);
         };
       }
     }
@@ -36,5 +36,11 @@ const StructInstance = module.exports.StructInstance = class StructInstance {
     for (let name in parent.symbols) {
       this.symbols[name] = interpreter.interprete_instruction(parent.symbols[name].default_value, new Context().tail([prelude]));
     }
+  }
+
+  to_context() {
+    return new Context({
+      self: {...this, patterns: this.parent.patterns, structs: {}}
+    });
   }
 }

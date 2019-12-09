@@ -6,7 +6,7 @@ const Context = require("./context.js");
 
 const EXECUTORS = {};
 
-const interpreter = module.exports = function interpreter(branch, stack) {
+const interpreter = module.exports.interprete = function interpreter(branch, stack) {
   // console.log(JSON.stringify(branch, " ", 2));
   let context_stack = [...stack, {patterns: {}, symbols: {}, structs: {}, last_value: null}];
   let last_context = context_stack[context_stack.length - 1];
@@ -206,7 +206,7 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) 
     self: {...instance, patterns: struct.patterns, structs: {}}
   });
 
-  call_raw(pattern, instruction.args, new_ctx.tail(context_stack));
+  call_raw(pattern, args, new_ctx.tail(context_stack));
 
   return instance;
 }
@@ -231,10 +231,15 @@ EXECUTORS[KINDS.DEFINE_MEMBER] = function define_member(instruction, context_sta
 }
 
 const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(instruction, context_stack) {
+  let instance;
+
+  console.log(instruction.parent);
+
   // struct instance
-  let instance = find_symbol_in_stack(instruction.parent.name, context_stack);
+  instance = find_symbol_in_stack(instruction.parent.name, context_stack);
+  
   if (!instance) { // if the instance isn't defined
-    console.log(context_stack);
+    // console.log(context_stack);
     throw new RuntimeError("Variable not found", instruction.line, instruction.char);
   }
   if (instance.kind !== KINDS.STRUCT_INSTANCE) { // if the instance isn't a struct
@@ -325,7 +330,7 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           }
           // fallthrough
         default:
-          throw new RuntimeError("Unimplemented: " + typeof lhs, instruction.line, instruction.char);
+          throw new RuntimeError("Unimplemented: " + typeof lhs + " (" + step.description + ")", instruction.line, instruction.char);
       }
 
       if (typeof operators[step] !== "function") {
@@ -337,17 +342,22 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
         let a = stack.pop();
         let new_stack = context_stack;
         if (a.kind === KINDS.STRUCT_INSTANCE) {
-          console.log(a);
-          new_stack = new Context({
-            self: {...a, patterns: a.parent.patterns, structs: {}}
-          }).tail(context_stack);
+          // console.log(a);
+          new_stack = a.to_context().tail(context_stack);
         }
         let result = operators[step](a, b, new_stack);
 
         if (Array.isArray(result) && result.length === 1) result = result[0];
         stack.push(result);
       } else if (UNARY_OPS.includes(step)) { // If the operator is a unary operator, like !
-        let result = operators[step](stack.pop(), null, new_stack);
+        let a = stack.pop();
+        let new_stack = context_stack;
+
+        if (a.kind === KINDS.STRUCT_INSTANCE) {
+          new_stack = a.to_context().tail(context_stack);
+        }
+
+        let result = operators[step](a, null, new_stack);
 
         if (Array.isArray(result) && result.length === 1) result = result[0];
         stack.push(result);
