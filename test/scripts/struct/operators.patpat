@@ -14,6 +14,14 @@ Vec2: struct {
   #add: (#self(); v) => {
     Vec2.'new(self.x + v.x; self.y + v.y)
   }
+
+  #sub: (#self(); v) => {
+    Vec2.'new(self.x - v.x; self.y - v.y)
+  }
+
+  #mul: (#self(); v) => {
+    (self.x * v.x) + (self.y * v.y)
+  }
 }
 
 let a: Vec2.'new(2; 3)
@@ -23,3 +31,5 @@ b.'println()
 let c: a + b
 c.'println()
 (a + b).'println()
+(a - b).'println()
+'println(a * b)

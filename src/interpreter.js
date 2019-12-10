@@ -84,7 +84,7 @@ const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instr
     if (typeof pattern._execute === "function") {
       return pattern._execute(args, context_stack, instruction.line, instruction.char);
     } else {
-      return call_raw(pattern, args, context_stack);
+      return call_raw(pattern, args, context_stack, instruction);
     }
   } else {
     throw new RuntimeError(`Pattern not found: ${instruction.pattern.name}`, instruction.line, instruction.char);
@@ -101,14 +101,18 @@ const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(in
 
   let args = interprete_instruction(instruction.args, context_stack);
 
-  return call_raw(fn, args, context_stack);
+  return call_raw(fn, args, context_stack, instruction);
 }
 
-const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack) {
+const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack, instruction) {
   let new_ctx = new Context();
 
   for (let n = 0; n < fn.args.length; n++) {
     new_ctx.symbols[fn.args[n].name] = args[n];
+  }
+
+  if (instruction && fn.args && args.length < fn.args.filter(x => !x.optional).length) {
+    throw new RuntimeError("Not enough argument given to " + fn.name + ", did you use ';'?", instruction.line, instruction.char);
   }
 
   return interpreter(fn.body, new_ctx.tail(fn.context_stack || context_stack));
@@ -206,11 +210,12 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) 
   let instance = struct.instance();
 
   let args = interprete_instruction(instruction.args, context_stack);
+
   let new_ctx = new Context({
     self: {...instance, patterns: struct.patterns, structs: {}}
   });
 
-  call_raw(pattern, args, new_ctx.tail(context_stack));
+  call_raw(pattern, args, new_ctx.tail(context_stack), instruction);
 
   return instance;
 }
@@ -268,7 +273,7 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
       }
 
       let args = interprete_instruction(instruction.member.args, context_stack);
-      let result = call_raw(pattern, [instance, ...args], context_stack);
+      let result = call_raw(pattern, [instance, ...args], context_stack, instruction);
 
       return result;
   }

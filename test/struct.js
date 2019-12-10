@@ -10,6 +10,6 @@ describe("Structs", () => {
 
   it("Should define custom operators for structs", () => {
     let result = execute("scripts/struct/operators.patpat");
-    assert.equal(result, "2 3\n-1 -2\n1 1\n1 1\n");
+    assert.equal(result, "2 3\n-1 -2\n1 1\n1 1\n3 5\n-8\n");
   });
 });
