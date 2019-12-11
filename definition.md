@@ -11,7 +11,7 @@ These are the usual nonterminals used throughout this file:
 whitespace = " ", {" "};
 lowercase_letter = "a" | "b" | ... | "z";
 uppercase_letter = "A" | "B" | ... | "Z";
-digits = digit, {digits};
+digits = digit, {digit};
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
 all_characters = ? all characters ?;
 

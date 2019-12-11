@@ -1,15 +1,19 @@
 // This is a simple prime sieve
-// As of right now, it cannot be executed
 
 #for(2, 50, (n) => {
-  let is_prime: true
-  #for(2, n, (x) => {
-    #if((n % x) == 0, () => {
-      is_prime: false
-      #break()
-    })
-  })
-  #if(is_prime, () => {
+  #if('is_prime(n), () => {
     'println(n)
   })
 })
+
+'is_prime: (n) => {
+  //! Returns wether or not n is prime
+  let res: true // set res to true
+  #for(2, n, (x) => {
+    #if((n % x) == 0, () => { // n | x
+      res: false
+      #break()
+    })
+  })
+  res // return res
+}
