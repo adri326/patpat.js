@@ -6,10 +6,10 @@ const Context = require("./context.js");
 
 const EXECUTORS = {};
 
-const interpreter = module.exports.interprete = function interpreter(branch, stack) {
+const interpreter = module.exports.interprete = function interpreter(branch, stack = []) {
   // console.log(JSON.stringify(branch, " ", 2));
-  let context_stack = [...stack, {patterns: {}, symbols: {}, structs: {}, last_value: null}];
-  let last_context = context_stack[context_stack.length - 1];
+  let new_stack = new Context().tail(stack);
+  let last_context = new_stack[new_stack.length - 1];
 
   // NOTE: Patterns are read ahead
   for (let instruction of branch.instructions) {
@@ -22,12 +22,14 @@ const interpreter = module.exports.interprete = function interpreter(branch, sta
   }
 
   for (let n = 0; n < branch.instructions.length; n++) {
-    let result = interprete_instruction(branch.instructions[n], context_stack);
+    let result = interprete_instruction(branch.instructions[n], new_stack);
     last_context.last_value = result;
   }
 
   return last_context.last_value;
 }
+
+EXECUTORS[KINDS.BLOCK] = interpreter;
 
 const find_pattern_in_stack = module.exports.find_pattern_in_stack = function find_pattern_in_stack(name, context_stack) {
   for (let n = context_stack.length - 1; n >= 0; n--) {

@@ -44,4 +44,11 @@ describe("Program flow: if, for, etc.", () => {
       assert.equal(result, expected);
     });
   });
+
+  describe("Blocks", () => {
+    it("Should execute blocks and use its last value as return value, just like a function body does", () => {
+      let result = execute("scripts/flow/block.patpat");
+      assert.equal(result, "Yet you will see me instead");
+    });
+  });
 });

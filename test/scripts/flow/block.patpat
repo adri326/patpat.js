@@ -1,0 +1,4 @@
+'print({
+  "I am a string"
+  "Yet you will see me instead"
+})

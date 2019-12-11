@@ -116,11 +116,12 @@ tuple_token = EXPRESSION | FUNCTION;
 ### Next elements and seperators
 
 Next elements tell tuples that what is coming next is part of another field on that tuple.
-Separators allow multiple instructions to be executed for a single field. The last one's value will be retained.
+
+Separators used to allow multiple instructions to be executed for a single field. The last one's value would be retained.
+Now blocks achieve this goal.
 
 ```ebnf
-NEXT_ELEMENT = ";"
-SEPARATOR = ","
+NEXT_ELEMENT = ","
 ```
 
 **e.g:** `(2, 3)` will return the same as `(3)`.
@@ -144,8 +145,18 @@ FUNCTION = ARG_TUPLE, {whitespace}, "=>", {whitespace}, BLOCK;
 
 *Calls* a function with the given arguments.
 
+It used to be possible to have calls following calls, but this feature has been removed as it made it impossible to start next lines with tuples:
+
+```patpat
+let value = Vec2.'new(5, 6)
+(value + Vec2.'new(2, 3)).'print()
+```
+
+would actuall consider the second line's first tuple as being a call to the result of the struct definition.
+Nested calls now must be done by encapsulating the value preceding it: `('a())()`.
+
 ```ebnf
-FUNCTION_CALL = (TUPLE | SYMBOL | FUNCTION_CALL), {whitespace}, TUPLE;
+FUNCTION_CALL = (TUPLE | SYMBOL), {whitespace}, TUPLE;
 ```
 
 **e.g:** `'i_have_n_cats(36)`
