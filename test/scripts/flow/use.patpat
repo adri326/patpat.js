@@ -1,0 +1,5 @@
+'println("This will be printed first.")
+
+let submodule: #use("./use2.patpat")
+
+submodule.'like()

@@ -3,10 +3,11 @@ const {BINARY_OPS, UNARY_OPS, VALID_EXP_TERMS} = KINDS;
 const {RuntimeError} = require("./errors.js");
 const prelude = require("./prelude.js");
 const Context = require("./context.js");
+const path = require("path");
 
 const EXECUTORS = {};
 
-const interpreter = module.exports.interprete = function interpreter(branch, stack = []) {
+const interpreter = module.exports.interprete = function interpreter(branch, stack = [], return_ctx = false) {
   // console.log(JSON.stringify(branch, " ", 2));
   let new_stack = new Context().tail(stack);
   let last_context = new_stack[new_stack.length - 1];
@@ -26,6 +27,9 @@ const interpreter = module.exports.interprete = function interpreter(branch, sta
     last_context.last_value = result;
   }
 
+  if (return_ctx) {
+    return last_context;
+  }
   return last_context.last_value;
 }
 
@@ -254,30 +258,48 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
   if (!instance) { // if the instance isn't defined
     throw new RuntimeError("Variable not found", instruction.line, instruction.char);
   }
-  if (instance.kind !== KINDS.STRUCT_INSTANCE) { // if the instance isn't a struct
+  if (instance.kind !== KINDS.STRUCT_INSTANCE && instance.kind !== KINDS.MODULE) { // if the instance isn't a struct or module
     throw new RuntimeError("Cannot access member of " + instruction.parent.kind.description, instruction.parent.line, instruction.parent.char);
   }
 
-  switch (instruction.member.kind) {
-    case KINDS.SYMBOL:
-      if (!instance.symbols.hasOwnProperty(instruction.member.name)) { // if the symbol is not found
-        throw new RuntimeError("Variable not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
-      }
+  if (instance.kind === KINDS.STRUCT_INSTANCE) {
+    switch (instruction.member.kind) {
+      case KINDS.SYMBOL:
+        if (!instance.symbols.hasOwnProperty(instruction.member.name)) { // if the symbol is not found
+          throw new RuntimeError("Variable not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+        }
 
-      return instance.symbols[instruction.member.name];
-    case KINDS.PATTERN_CALL:
-      let pattern = instance.parent.patterns[instruction.member.pattern.name];
-      if (!pattern) { // if the pattern is not found
-        throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
-      }
-      if (!pattern.is_method) {
-        throw new RuntimeError("Pattern is not a method", instruction.member.line, instruction.member.char);
-      }
+        return instance.symbols[instruction.member.name];
+      case KINDS.PATTERN_CALL:
+        let pattern = instance.parent.patterns[instruction.member.pattern.name];
+        if (!pattern) { // if the pattern is not found
+          throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+        }
+        if (!pattern.is_method) {
+          throw new RuntimeError("Pattern is not a method", instruction.member.line, instruction.member.char);
+        }
 
-      let args = interprete_instruction(instruction.member.args, context_stack);
-      let result = call_raw(pattern, [instance, ...args], context_stack, instruction);
+        let args = interprete_instruction(instruction.member.args, context_stack);
+        let result = call_raw(pattern, [instance, ...args], context_stack, instruction);
 
-      return result;
+        return result;
+    }
+  } else if (instance.kind === KINDS.MODULE) {
+    switch (instruction.member.kind) {
+      case KINDS.SYMBOL:
+        if (!instance.symbols.hasOwnProperty(instruction.member.name)) { // if the symbol is not found
+          throw new RuntimeError("Variable not found in " + path.basename(instance.path), instruction.member.line, instruction.member.char);
+        }
+
+        return instance.symbols[instruction.member.name];
+      case KINDS.PATTERN_CALL:
+        if (!instance.patterns.hasOwnProperty(instruction.member.pattern.name)) { // if the pattern is not found
+          throw new RuntimeError("Pattern not found in " + path.basename(instance.path), instruction.member.line, instruction.member.char);
+        }
+
+        return call_pattern(instruction.member, instance.context_stack);
+      // TODO: structs
+    }
   }
 }
 
@@ -381,4 +403,17 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
     }
   }
   return stack[0];
+}
+
+EXECUTORS[KINDS.USE] = function use(instruction, context_stack) {
+  // console.log("=== NOW ENTERING " + instruction.path + " ===");
+  let ctx = interpreter(prelude.sourced[instruction.path], context_stack, true);
+  return {
+    kind: KINDS.MODULE,
+    symbols: ctx.symbols,
+    patterns: ctx.patterns,
+    structs: ctx.struct,
+    context_stack: ctx.tail(context_stack),
+    path: instruction.path
+  };
 }

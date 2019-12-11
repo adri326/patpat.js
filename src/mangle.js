@@ -16,6 +16,9 @@ module.exports = function mangle_body(branch, options) {
   */
   branch.instructions = branch.terms.slice();
 
+  mangle_use(branch, options);
+  mangle_load(branch, options);
+
   mangle_functions(branch, options);
   mangle_struct(branch, options);
   mangle_calls(branch, options);
@@ -32,6 +35,59 @@ module.exports = function mangle_body(branch, options) {
   }
   delete branch.terms;
   // console.log(branch);
+}
+
+function mangle_use(branch, {ctx_kind}) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind === KINDS.USE) {
+      if (ctx_kind !== "file") {
+        throw new CompileError(
+          "Use statements can only be put in the file's global context",
+          branch.instructions[n].line,
+          branch.instructions[n].char
+        );
+      }
+      if (n === branch.instructions.length - 1) {
+        throw new CompileError(
+          "Use statement at end of file",
+          branch.instructions[n].line,
+          branch.instructions[n].char
+        );
+      }
+      if (branch.instructions[n + 1].kind !== KINDS.TUPLE) {
+        throw new CompileError(
+          "Invalid term following use statement",
+          branch.instructions[n + 1].line,
+          branch.instructions[n + 1].char
+        );
+      }
+      if (branch.instructions[n + 1].instructions.length !== 1) {
+        throw new CompileError(
+          "Invalid number of arguments given to a use statement: expected 1, got " + branch.instructions[n + 1].instructions.length,
+          branch.instructions[n + 1].line,
+          branch.instructions[n + 1].char
+        );
+      }
+      if (branch.instructions[n + 1].instructions[0].kind !== KINDS.STRING) {
+        throw new CompileError(
+          "Invalid argument given to a use statement: expected a string litteral, got a " + branch.instructions[n + 1].instructions[0].kind.description,
+          branch.instructions[n + 1].instructions[0].line,
+          branch.instructions[n + 1].instructions[0].char
+        );
+      }
+
+      insert(branch, {
+        kind: KINDS.USE,
+        path: branch.instructions[n + 1].instructions[0].string,
+        line: branch.instructions[n].line,
+        char: branch.instructions[n].char
+      }, n, 2);
+    }
+  }
+}
+
+function mangle_load(branch, {ctx_kind}) {
+
 }
 
 function mangle_declaration(branch, {ctx_kind, is_tuple, is_array}) {
