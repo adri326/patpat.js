@@ -25,7 +25,7 @@ module.exports = function mangle_body(branch, options) {
   mangle_define(branch, options);
   mangle_declaration(branch, options);
 
-  strip_separators(branch);
+  // strip_separators(branch);
 
   if (options.is_tuple) {
     branch.length = branch.instructions.filter((instruction) => instruction.kind === KINDS.NEXT_ELEMENT).length + 1;
@@ -503,7 +503,7 @@ function mangle_accessors(branch, options) {
 
 function strip_separators(branch) {
   /*! strip_separators(branch: ParsedTree)
-    Removes `SEPARATOR`s (`;`) from the instructions array.
+    Removes `SEPARATOR`s (`,`) from the instructions array.
   */
   branch.instructions = branch.instructions.filter(x => x.kind !== KINDS.SEPARATOR);
 }

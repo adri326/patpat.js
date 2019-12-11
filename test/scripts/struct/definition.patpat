@@ -1,10 +1,10 @@
 Snowball: struct {
   let weight: 0
 
-  'throw: (#self(); target) => {
+  'throw: (#self(), target) => {
     'println(
-      "I am thrown at"; target; "with";
-      #if(self.weight > 1; "great"; "little");
+      "I am thrown at", target, "with",
+      #if(self.weight > 1, "great", "little"),
       "force!"
     )
   }

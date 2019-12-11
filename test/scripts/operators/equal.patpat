@@ -1,5 +1,5 @@
 'assert: (a) => {
-  #if(!a; #error)
+  #if(!a, #error)
 }
 
 'assert(2 == 2)

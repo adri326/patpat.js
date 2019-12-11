@@ -1,15 +1,15 @@
 // This is a simple prime sieve
 // As of right now, it cannot be executed
 
-#for(2; 50; (n) => {
+#for(2, 50, (n) => {
   let is_prime: true
-  #for(2; n; (x) => {
-    #if((n % x) == 0; () => {
+  #for(2, n, (x) => {
+    #if((n % x) == 0, () => {
       is_prime: false
       #break()
     })
   })
-  #if(is_prime; () => {
+  #if(is_prime, () => {
     'println(n)
   })
 })

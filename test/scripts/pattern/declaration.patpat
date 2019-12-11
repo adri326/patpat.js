@@ -1,7 +1,7 @@
 'empty: () => {}
-'addition: (a; b) => {a + b}
-'parent: (a; b) => {
+'addition: (a, b) => {a + b}
+'parent: (a, b) => {
   'nested: () => {"Hello world!"}
 }
 
-let standalone: (a; b) => {a - b}
+let standalone: (a, b) => {a - b}

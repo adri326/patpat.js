@@ -15,10 +15,9 @@ describe("Program flow: if, for, etc.", () => {
       }, RuntimeError);
     });
 
-    it("Should throw an error while trying to execute an if call with the 2nd parameter not being a function", () => {
-      assert.throws(() => {
-        execute("scripts/flow/if-invalid-type.patpat");
-      }, RuntimeError);
+    it("Should also work if the arguments are not functions", () => {
+      let result = execute("scripts/flow/if-no-function.patpat");
+      assert.equal(result, "Execute me!");
     });
   });
 

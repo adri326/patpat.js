@@ -310,7 +310,7 @@ new TermMatcher("TUPLE_START", /^\(/, 900).append();
 new TermMatcher("TUPLE_END", /^\)/, 900).append();
 new TermMatcher("BLOCK_START", /^{/, 900).append();
 new TermMatcher("BLOCK_END", /^}/, 900).append();
-new TermMatcher("NEXT_ELEMENT", /^;/, 900).append();
+new TermMatcher("NEXT_ELEMENT", /^,/, 900).append();
 new TermMatcher("STRING", /^"/, 800).append();
 new TermMatcher("DEFINE", /^:/, 900).append();
 new TermMatcher("SYMBOL", /^[a-z_][a-z_\d]*/, -200).append();
@@ -320,7 +320,6 @@ new TermMatcher("NUMBER", /^-?\d+(?:\.\d*)?/, 800).append();
 new TermMatcher("BOOLEAN", /^(?:true|false)/, 500).append();
 new TermMatcher("ARROW", /^=>/, 1200).append();
 new TermMatcher("LET", /^let/, 600).append();
-new TermMatcher("SEPARATOR", /^,/, 700).append();
 new TermMatcher("STRUCT", /^struct/, 600).append();
 new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
 
