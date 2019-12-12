@@ -18,6 +18,8 @@ const interpreter = module.exports.interprete = function interpreter(branch, sta
         throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", left.line, left.char);
       }
       last_context.patterns[instruction.name] = instruction;
+    } else if (instruction.kind === KINDS.STRUCT) {
+      last_context.structs[instruction.name] = instruction;
     }
   }
 
@@ -187,11 +189,6 @@ EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_s
   } else {
     last_context.symbols[instruction.name] = interprete_instruction(instruction.right, context_stack);
   }
-}
-
-EXECUTORS[KINDS.STRUCT] = function declare_struct(instruction, context_stack) {
-  let last_context = context_stack[context_stack.length - 1];
-  last_context.structs[instruction.name] = instruction;
 }
 
 EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) {
