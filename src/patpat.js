@@ -36,8 +36,8 @@ function load_and_resolve(root_path, args, config) {
   let to_load = [];
   let to_source = [path.resolve(process.cwd(), root_path)];
 
-  function resolve(child_name, parent_path) {
-    if (!child_name) return null;
+  function resolve(child_name, parent_path, instruction) {
+    // if (!child_name) return null;
 
     let ext = path.extname(child_name) === "" ? ".patpat" : "";
 
@@ -51,9 +51,11 @@ function load_and_resolve(root_path, args, config) {
         return child_name + ext;
       }
     } else if (child_name.startsWith("/") || child_name.startsWith("~")) {
-      throw new CompileError(`'use' and 'load' paths cannot begin with / or ~: '${child_name}'`, i.line, i.char, parent_path);
+      throw new CompileError(`'use' and 'load' paths cannot begin with / or ~: '${child_name}'`, instruction.line, instruction.char, parent_path);
     } else if (child_name === "$") {
-      throw new CompileError(`'use' and 'load' paths cannot be '$'`, i.line, i.char, parent_path);
+      throw new CompileError(`'use' and 'load' paths cannot be '$'`, instruction.line, instruction.char, parent_path);
+    } else if (child_name === "") {
+      throw new CompileError(`'use' and 'load' paths cannot be empty`, instruction.line, instruction.char, parent_path);
     }
 
     for (let lookup_dir of config.lookup_dirs) {
@@ -84,11 +86,11 @@ function load_and_resolve(root_path, args, config) {
 
       for (let i of sourced[_path].instructions) {
         if (i.kind === KINDS.USE || i.kind === KINDS.LOAD) {
-          let _path2 = resolve(i.path, _path);
+          let _path2 = resolve(i.path, _path, i);
           to_source.push(_path2);
           i.path = _path2;
         } else if (i.kind === KINDS.DECLARE_SYMBOL && i.right && (i.right.kind === KINDS.USE || i.right.kind === KINDS.LOAD)) {
-          let _path2 = resolve(i.right.path, _path);
+          let _path2 = resolve(i.right.path, _path, i);
           to_source.push(_path2);
           i.right.path = _path2;
         }
