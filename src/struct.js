@@ -16,8 +16,8 @@ module.exports = class Struct {
       let pattern = patterns[name];
       let matching_operator = KINDS.OPERATOR_EQUIVS.find(([a, b]) => b === name);
       if (matching_operator) {
-        this.operators[matching_operator[0]] = function struct_operator(a, b, context_stack) {
-          return interpreter.call_raw(pattern, [a, b], context_stack);
+        this.operators[matching_operator[0]] = function struct_operator(a, b, context_stack, instruction) {
+          return interpreter.call_raw(pattern, [b], context_stack, instruction, {instance: a});
         };
       }
     }

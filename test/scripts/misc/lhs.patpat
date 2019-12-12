@@ -1,0 +1,33 @@
+'print_lhs: (#lhs()) => {
+  'println(lhs)
+  lhs
+}
+
+let bail: "BAIL"
+
+'if: (condition, action) => {
+  #if(condition, action, bail)
+}
+
+'else: (#lhs(), action) => {
+  #if(lhs == bail, action, lhs)
+}
+
+'elseif: (#lhs(), condition, action) => {
+  #if(lhs == bail, () => {
+    #if(condition, action, bail)
+  }, lhs)
+}
+
+"I am free!"
+'print_lhs()
+
+'compare: (a, b) => {
+  'if(a > b, () => {'println(a, ">", b)})
+  'elseif(a == b, () => {'println(a, "=", b)})
+  'else(() => {'println(a, "<", b)})
+}
+
+'compare(2, 3)
+'compare(4, 4)
+'compare(6, -1)

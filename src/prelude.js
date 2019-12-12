@@ -56,7 +56,7 @@ prelude.patterns = {
             return interpreter.call_raw(success, [], context_stack);
           }
         } else return success;
-      } else if (typeof error !== "undefined" && typeof error !== "null") {
+      } else if (typeof error !== "undefined" && error !== null) {
         if (error.kind === KINDS.PATTERN || error.kind === KINDS.FUNCTION) {
           if (error._execute) {
             return condition._execute([], context_stack, line, char);
@@ -262,3 +262,7 @@ const STR_OPS = module.exports.STR_OPS = {
   [KINDS.OP_NEQ]: (a, b) => a !== b
 };
 
+const ANY_OPS = module.exports.ANY_OPS = {
+  [KINDS.OP_EQ]: (a, b) => a === b,
+  [KINDS.OP_NEQ]: (a, b) => a !== b
+}

@@ -43,7 +43,7 @@ const find_pattern_in_stack = module.exports.find_pattern_in_stack = function fi
       return context_stack[n].patterns[name];
     }
   }
-  return null;
+  return KINDS.NOT_FOUND;
 }
 
 const find_symbol_in_stack = module.exports.find_symbol_in_stack = function find_symbol_in_stack(name, context_stack) {
@@ -52,7 +52,7 @@ const find_symbol_in_stack = module.exports.find_symbol_in_stack = function find
       return context_stack[n].symbols[name];
     }
   }
-  return null;
+  return KINDS.NOT_FOUND;
 }
 
 const find_struct_in_stack = module.exports.find_struct_in_stack = function find_struct_in_stack(name, context_stack) {
@@ -61,7 +61,7 @@ const find_struct_in_stack = module.exports.find_struct_in_stack = function find
       return context_stack[n].structs[name];
     }
   }
-  return null;
+  return KINDS.NOT_FOUND;
 }
 
 const interprete_instruction = module.exports.interprete_instruction = function interprete_instruction(instruction, context_stack, collapse_tuples = false) {
@@ -79,23 +79,22 @@ const interprete_instruction = module.exports.interprete_instruction = function 
 const call_pattern = EXECUTORS[KINDS.PATTERN_CALL] = function call_pattern(instruction, context_stack) {
   let pattern = find_pattern_in_stack(instruction.pattern.name, context_stack);
 
-  if (pattern) {
-    let args = interprete_instruction(instruction.args, context_stack);
-    // console.log(pattern);
-    // if (pattern.args) console.log(pattern.args.filter(x => !x.optional).length, args);
-    if (pattern.args && args.length < pattern.args.filter(x => !x.optional).length) {
-      throw new RuntimeError("Not enough argument given to " + pattern.name + ", did you use ';'?", instruction.line, instruction.char);
-    }
-
-    // console.log("!>", args);
-
-    if (typeof pattern._execute === "function") {
-      return pattern._execute(args, context_stack, instruction.line, instruction.char);
-    } else {
-      return call_raw(pattern, args, context_stack, instruction);
-    }
-  } else {
+  if (pattern == KINDS.NOT_FOUND) {
     throw new RuntimeError(`Pattern not found: ${instruction.pattern.name}`, instruction.line, instruction.char);
+  }
+  let args = interprete_instruction(instruction.args, context_stack);
+  // console.log(pattern);
+  // if (pattern.args) console.log(pattern.args.filter(x => !x.optional).length, args);
+  // if (pattern.args && args.length < pattern.args.filter(x => !x.optional).length) {
+  //   throw new RuntimeError("Not enough argument given to " + pattern.name + ", did you use ';'?", instruction.line, instruction.char);
+  // }
+
+  // console.log("!>", args);
+
+  if (typeof pattern._execute === "function") {
+    return pattern._execute(args, context_stack, instruction.line, instruction.char);
+  } else {
+    return call_raw(pattern, args, context_stack, instruction);
   }
 };
 
@@ -112,16 +111,22 @@ const call_function = EXECUTORS[KINDS.FUNCTION_CALL] = function call_function(in
   return call_raw(fn, args, context_stack, instruction);
 }
 
-const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack, instruction) {
+const call_raw = module.exports.call_raw = function call_raw(fn, args, context_stack, instruction, options = {}) {
   let new_ctx = new Context();
 
+  let n_args = distribute_args(args, fn.args, context_stack, {
+    instance: null,
+    ...options,
+    instruction
+  });
+
   for (let n = 0; n < fn.args.length; n++) {
-    new_ctx.symbols[fn.args[n].name] = args[n];
+    new_ctx.symbols[fn.args[n].name] = n_args[n];
   }
 
-  if (instruction && fn.args && args.length < fn.args.filter(x => !x.optional).length) {
-    throw new RuntimeError("Not enough argument given to " + fn.name + ", did you use ';'?", instruction.line, instruction.char);
-  }
+  // if (instruction && fn.args && args.length < fn.args.filter(x => !x.optional).length) {
+  //   throw new RuntimeError("Not enough argument given to " + fn.name + ", did you use ';'?", instruction.line, instruction.char);
+  // }
 
   return interpreter(fn.body, new_ctx.tail(fn.context_stack || context_stack));
 }
@@ -144,11 +149,10 @@ EXECUTORS[KINDS.PATTERN] = (instruction, context_stack) => {
 
 EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack) {
   let symbol = find_symbol_in_stack(instruction.name, context_stack);
-  if (symbol !== null) {
-    return symbol;
-  } else {
+  if (symbol === KINDS.NOT_FOUND) {
     throw new RuntimeError("Undefined variable: " + instruction.name, instruction.line, instruction.char);
   }
+  return symbol;
 };
 
 EXECUTORS[KINDS.TUPLE] = function tuple(instruction, context_stack) {
@@ -197,12 +201,12 @@ EXECUTORS[KINDS.DECLARE_SYMBOL] = function declare_symbol(instruction, context_s
 
 EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) {
   let struct = find_struct_in_stack(instruction.name, context_stack);
-  if (!struct) {
+  if (struct === KINDS.NOT_FOUND) {
     throw new RuntimeError("No struct named " + instruction.name + " found.", instruction.line, instruction.char);
   }
 
   let pattern = find_pattern_in_stack(instruction.pattern, [struct]);
-  if (!pattern) {
+  if (pattern === KINDS.NOT_FOUND) {
     throw new RuntimeError(`No pattern named ${instruction.pattern.name} found in ${instruction.name}.`, instruction.line, instruction.char);
   }
 
@@ -277,7 +281,7 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
         }
 
         let args = interprete_instruction(instruction.member.args, context_stack);
-        let result = call_raw(pattern, [instance, ...args], context_stack, instruction);
+        let result = call_raw(pattern, args, context_stack, instruction, {instance});
 
         return result;
     }
@@ -326,7 +330,7 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           break;
         case KINDS.SYMBOL:
           let symbol = find_symbol_in_stack(step.name, context_stack);
-          if (symbol === null) throw new RuntimeError("Undefined variable " + step.name, step.line, step.char);
+          if (symbol === KINDS.NOT_FOUND) throw new RuntimeError("Undefined variable " + step.name, step.line, step.char);
           stack.push(symbol);
           break;
         case KINDS.MEMBER_ACCESSOR:
@@ -353,10 +357,18 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           operators = prelude.STR_OPS;
           type_name = "<string>";
           break;
+        case "undefined":
+          operators = prelude.ANY_OPS;
+          type_name = "<undefined>";
+          break;
         case "object":
-          if (lhs.kind === KINDS.STRUCT_INSTANCE) {
+          if (lhs && lhs.kind === KINDS.STRUCT_INSTANCE) {
             operators = lhs.parent.operators;
             type_name = lhs.parent.name;
+            break;
+          } else if (lhs === null) {
+            operators = prelude.ANY_OPS;
+            type_name = "<undefined>";
             break;
           }
           // fallthrough
@@ -372,11 +384,11 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
         let b = stack.pop();
         let a = stack.pop();
         let new_stack = context_stack;
-        if (a.kind === KINDS.STRUCT_INSTANCE) {
+        if (a && a.kind === KINDS.STRUCT_INSTANCE) {
           // console.log(a);
           new_stack = a.to_context().tail(context_stack);
         }
-        let result = operators[step](a, b, new_stack);
+        let result = operators[step](a, b, new_stack, step);
 
         if (Array.isArray(result) && result.length === 1) result = result[0];
         stack.push(result);
@@ -384,7 +396,7 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
         let a = stack.pop();
         let new_stack = context_stack;
 
-        if (a.kind === KINDS.STRUCT_INSTANCE) {
+        if (a && a.kind === KINDS.STRUCT_INSTANCE) {
           new_stack = a.to_context().tail(context_stack);
         }
 
@@ -413,4 +425,28 @@ EXECUTORS[KINDS.USE] = function use(instruction, context_stack) {
     context_stack: ctx.tail(context_stack),
     path: instruction.path
   };
+}
+
+function distribute_args(args, raw_args, context_stack, options) {
+  let instance = options.instance || null;
+  let instruction = options.instruction;
+  let n = 0;
+  let res = [];
+  for (let arg of raw_args) {
+    if (arg.kind === KINDS.SELF) {
+      res.push(instance);
+    } else if (arg.kind === KINDS.LHS) {
+      res.push(context_stack[context_stack.length - 1].last_value);
+    } else {
+      if (n >= args.length) {
+        if (instruction) {
+          throw new RuntimeError("Not enough arguments", instruction.line, instruction.char);
+        } else {
+          throw new RuntimeError("Not enough arguments");
+        }
+      }
+      res.push(args[n++]);
+    }
+  }
+  return res;
 }
