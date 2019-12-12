@@ -1,11 +1,12 @@
 const chalk = require("chalk");
 
 class CompileError extends Error {
-  constructor(message, line = null, char = null) {
+  constructor(message, line = null, char = null, file = null) {
     super(message);
     this.message = message;
     this.line = line;
     this.char = char;
+    this.file = file;
   }
 
   toString() {

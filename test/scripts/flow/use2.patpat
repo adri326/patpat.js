@@ -1,0 +1,5 @@
+'println("And this will be printed second.")
+
+'like: () => {
+  'println("I like this a lot!")
+}

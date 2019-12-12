@@ -9,6 +9,8 @@ module.exports = function test(source) {
   patpat(path.join(__dirname, `../test/${source}`), {
     stdout,
     throwError: true
+  }, {
+    lookup_dirs: ["./", path.join(__dirname, "../test/")]
   });
   return output;
 }

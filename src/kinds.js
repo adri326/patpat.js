@@ -43,7 +43,12 @@ const KINDS = module.exports = {
   BLOCK: Symbol("BLOCK"),
   DECLARE_SYMBOL: Symbol("DECLARE_SYMBOL"),
   STRUCT_INSTANCE: Symbol("STRUCT_INSTANCE"),
-  STRUCT_INIT: Symbol("STRUCT_INIT")
+  STRUCT_INIT: Symbol("STRUCT_INIT"),
+
+  USE: Symbol("USE"),
+  LOAD: Symbol("LOAD"),
+  MODULE: Symbol("MODULE"),
+  RAW: Symbol("RAW")
 };
 
 KINDS.BINARY_OPS = [

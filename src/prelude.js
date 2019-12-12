@@ -5,6 +5,8 @@ const prelude = module.exports;
 const {RuntimeError} = require("./errors.js");
 const Context = require("./context.js");
 
+prelude.sourced = {};
+
 prelude.patterns = {
   "'println": {
     kind: KINDS.PATTERN,
@@ -258,5 +260,5 @@ const STR_OPS = module.exports.STR_OPS = {
   },
   [KINDS.OP_EQ]: (a, b) => a === b,
   [KINDS.OP_NEQ]: (a, b) => a !== b
-}
+};
 

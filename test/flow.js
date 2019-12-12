@@ -51,4 +51,11 @@ describe("Program flow: if, for, etc.", () => {
       assert.equal(result, "Yet you will see me instead");
     });
   });
+
+  describe("use/load", () => {
+    it("Should execute instructions within an #use statement and export its symbols, patterns and structs", () => {
+      let result = execute("scripts/flow/use.patpat");
+      assert.equal(result, "This will be printed first.\nAnd this will be printed second.\nI like this a lot!\n");
+    });
+  });
 });

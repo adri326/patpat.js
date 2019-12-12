@@ -322,6 +322,8 @@ new TermMatcher("ARROW", /^=>/, 1200).append();
 new TermMatcher("LET", /^let/, 600).append();
 new TermMatcher("STRUCT", /^struct/, 600).append();
 new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
+new TermMatcher("USE", /^#use/, 600).append();
+new TermMatcher("LOAD", /^#load/, 600).append();
 
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
