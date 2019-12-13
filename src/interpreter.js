@@ -357,23 +357,16 @@ const execute_expression = EXECUTORS[KINDS.EXPRESSION] = function execute_expres
           operators = prelude.STR_OPS;
           type_name = "<string>";
           break;
-        case "undefined":
-          operators = prelude.ANY_OPS;
-          type_name = "<undefined>";
-          break;
         case "object":
           if (lhs && lhs.kind === KINDS.STRUCT_INSTANCE) {
             operators = lhs.parent.operators;
             type_name = lhs.parent.name;
             break;
-          } else if (lhs === null) {
-            operators = prelude.ANY_OPS;
-            type_name = "<undefined>";
-            break;
           }
           // fallthrough
         default:
-          throw new RuntimeError("Unimplemented: " + typeof lhs + " (" + step.description + ")", instruction.line, instruction.char);
+          operators = prelude.ANY_OPS;
+          type_name = "<undefined>";
       }
 
       if (typeof operators[step] !== "function") {
