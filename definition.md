@@ -184,7 +184,7 @@ Cat: struct {
 
 ### Typenames
 
-This are simply names for structs, that are `PascalCased`.
+These are simply names for structs, that are `PascalCased`.
 
 ```ebnf
 TYPENAME = (uppercase_letter | "_"), {uppercase_letter | "_" | lowercase_letter | digit};

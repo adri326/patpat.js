@@ -182,4 +182,4 @@ Flow control is done using the `#for`, `#while`, `#if`, `#else` and `#elseif` pa
 
 ### Formal definition
 
-The formal definition can be looked [here](definition.md).
+The formal definition can be consulted [here](definition.md).
