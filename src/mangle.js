@@ -422,7 +422,16 @@ function mangle_functions(branch) {
             args.push({
               name: "self",
               optional: false,
-              symbolic: false
+              symbolic: false,
+              kind: KINDS.SELF
+            });
+            continue;
+          } else if (instruction.pattern.name === "#lhs") {
+            args.push({
+              name: "lhs",
+              optional: false,
+              symbolic: false,
+              kind: KINDS.LHS
             });
             continue;
           }

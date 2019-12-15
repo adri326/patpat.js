@@ -40,32 +40,65 @@ prelude.patterns = {
     name: "#if",
     args: [
       {name: "condition", optional: false},
-      {name: "success", optional: false},
-      {name: "error", optional: true, default: null}
+      {name: "success", optional: false}
     ],
-    _execute: ([condition, success, error], context_stack, line, char) => {
+    _execute: ([condition, success], context_stack, line, char) => {
       if (!success) {
         throw new RuntimeError("Invalid first argument type, expected FUNCTION or PATTERN, got " + success + " (in " + this.name + ")", line, char);
       }
 
       if (condition) {
-        if (success && success.kind === KINDS.PATTERN || success.kind === KINDS.FUNCTION) {
+        if (success && (success.kind === KINDS.PATTERN || success.kind === KINDS.FUNCTION)) {
           if (success._execute) {
             return success._execute([], context_stack, line, char);
           } else {
-            return interpreter.call_raw(success, [], context_stack);
+            return interpreter.call_raw(success, [], context_stack, {line, char});
           }
         } else return success;
-      } else if (typeof error !== "undefined" && typeof error !== "null") {
-        if (error.kind === KINDS.PATTERN || error.kind === KINDS.FUNCTION) {
-          if (error._execute) {
-            return condition._execute([], context_stack, line, char);
+      } else return prelude.symbols.__bail;
+    }
+  },
+  "#else": {
+    kind: KINDS.PATTERN,
+    name: "#else",
+    args: [
+      {name: "action", optional: false}
+    ],
+    _execute: ([action], context_stack, line, char) => {
+      let last_context = context_stack[context_stack.length - 1];
+      if (last_context.last_value === prelude.symbols.__bail) {
+        if (action && (action.kind === KINDS.PATTERN || action.kind === KINDS.FUNCTION)) {
+          if (action._execute) {
+            return action._execute([], context_stack, line, char);
           } else {
-            return interpreter.call_raw(error, [], context_stack);
+            return interpreter.call_raw(action, [], context_stack, {line, char});
           }
-        } else return error;
+        }
       } else {
-        return null;
+        return last_context.last_value;
+      }
+    }
+  },
+  "#elseif": {
+    kind: KINDS.PATTERN,
+    name: "#elseif",
+    args: [
+      {name: "condition", optional: false},
+      {name: "action", optional: false}
+    ],
+    _execute: ([condition, action], context_stack, line, char) => {
+      let last_context = context_stack[context_stack.length - 1];
+      if (last_context.last_value === prelude.symbols.__bail) {
+        if (!condition) return prelude.symbols.__bail;
+        if (action && (action.kind === KINDS.PATTERN || action.kind === KINDS.FUNCTION)) {
+          if (action._execute) {
+            return action._execute([], context_stack, line, char);
+          } else {
+            return interpreter.call_raw(action, [], context_stack, {line, char});
+          }
+        }
+      } else {
+        return last_context.last_value;
       }
     }
   },
@@ -93,7 +126,7 @@ prelude.patterns = {
         throw new RuntimeError("Last argument must be a function!", line, char);
       }
 
-      let last_value = null;
+      let last_value = prelude.symbols.__bail;
       for (let x = from; x < to; x += step) {
         let result;
         if (typeof fn._execute === "function") {
@@ -111,6 +144,7 @@ prelude.patterns = {
   },
   "#while": {
     kind: KINDS.PATTERN,
+    name: "#while",
     args: [
       {name: "condition"},
       {name: "loop", optional: true}
@@ -134,7 +168,8 @@ prelude.patterns = {
           return interpreter.call_raw(condition, [], context_stack);
         };
       }
-      let last_value = null;
+
+      let last_value = prelude.symbols.__bail;
       while (execute_condition()) {
         let result;
         if (loop) {
@@ -154,6 +189,7 @@ prelude.patterns = {
   },
   "'ident": { // This will probably be deleted soon
     kind: KINDS.PATTERN,
+    name: "'ident",
     _execute: ([value], context_stack) => {
       return {
         kind: KINDS.FUNCTION,
@@ -176,6 +212,7 @@ prelude.patterns = {
   },
   "#break": {
     kind: KINDS.PATTERN,
+    name: "#break",
     args: [
       {
         name: "__value",
@@ -199,8 +236,20 @@ prelude.patterns = {
       }],
     }
   },
+  "#bail": {
+    kind: KINDS.PATTERN,
+    name: "#bail",
+    args: [],
+    body: {
+      instructions: [{
+        kind: KINDS.SYMBOL,
+        name: "__bail"
+      }]
+    }
+  },
   "#error": {
     kind: KINDS.PATTERN,
+    name: "#error",
     args: [
       {
         name: "value",
@@ -214,7 +263,8 @@ prelude.patterns = {
 }
 
 prelude.symbols = {
-  __break: Symbol("BREAK")
+  __break: Symbol("BREAK"),
+  __bail: Symbol("BAIL")
 };
 
 prelude.structs = {};
@@ -262,3 +312,7 @@ const STR_OPS = module.exports.STR_OPS = {
   [KINDS.OP_NEQ]: (a, b) => a !== b
 };
 
+const ANY_OPS = module.exports.ANY_OPS = {
+  [KINDS.OP_EQ]: (a, b) => a === b,
+  [KINDS.OP_NEQ]: (a, b) => a !== b
+}

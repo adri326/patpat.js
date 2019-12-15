@@ -48,7 +48,11 @@ const KINDS = module.exports = {
   USE: Symbol("USE"),
   LOAD: Symbol("LOAD"),
   MODULE: Symbol("MODULE"),
-  RAW: Symbol("RAW")
+  RAW: Symbol("RAW"),
+
+  SELF: Symbol("SELF"),
+  LHS: Symbol("LHS"),
+  NOT_FOUND: Symbol("NOT_FOUND")
 };
 
 KINDS.BINARY_OPS = [
