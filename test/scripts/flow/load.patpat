@@ -1,0 +1,3 @@
+let mod: #load("./use2.patpat")
+
+mod.'like()

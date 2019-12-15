@@ -1,11 +1,9 @@
-
-
 const Context = module.exports = class Context {
-  constructor(symbols = {}, patterns = {}, structs = {}) {
+  constructor(symbols = {}, patterns = {}, structs = {}, last_value) {
     this.symbols = symbols;
     this.patterns = patterns;
     this.structs = structs;
-    this.last_value = null;
+    this.last_value = last_value;
   }
 
   tail(context_stack) {

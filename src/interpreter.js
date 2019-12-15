@@ -16,7 +16,7 @@ const interpreter = module.exports.interprete = function interpreter(branch, sta
   for (let instruction of branch.instructions) {
     if (instruction.kind === KINDS.DEFINE_PATTERN) {
       if (instruction.name.startsWith("#")) {
-        throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", left.line, left.char);
+        throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", instruction.line, instruction.char);
       }
       last_context.patterns[instruction.name] = instruction;
     } else if (instruction.kind === KINDS.STRUCT) {
@@ -294,7 +294,10 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
           throw new RuntimeError("Pattern not found in " + path.basename(instance.path), instruction.member.line, instruction.member.char);
         }
 
-        return call_pattern(instruction.member, instance.context_stack);
+        // This is as to feed to it what the last value is
+        let fake_context = new Context({}, {}, {}, context_stack[context_stack.length - 1].last_value);
+
+        return call_pattern(instruction.member, fake_context.tail(instance.context_stack));
       // TODO: structs
     }
   }
@@ -413,4 +416,50 @@ EXECUTORS[KINDS.USE] = function use(instruction, context_stack) {
     context_stack: ctx.tail(context_stack),
     path: instruction.path
   };
+}
+
+EXECUTORS[KINDS.LOAD] = function load(instruction, context_stack) {
+  let ctx = new Context();
+  for (let i of prelude.sourced[instruction.path].instructions) {
+    if (i.kind === KINDS.DEFINE_PATTERN) {
+      if (i.name.startsWith("#")) {
+        throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", i.line, i.char);
+      }
+      ctx.patterns[i.name] = i;
+    } else if (i.kind === KINDS.STRUCT) {
+      ctx.structs[i.name] = i;
+    }
+  }
+  return {
+    kind: KINDS.MODULE,
+    symbols: {},
+    patterns: ctx.patterns,
+    structs: ctx.structs,
+    path: instruction.path,
+    context_stack: ctx.tail(context_stack)
+  };;
+}
+
+function distribute_args(args, raw_args, context_stack, options) {
+  let instance = options.instance || null;
+  let instruction = options.instruction;
+  let n = 0;
+  let res = [];
+  for (let arg of raw_args) {
+    if (arg.kind === KINDS.SELF) {
+      res.push(instance);
+    } else if (arg.kind === KINDS.LHS) {
+      res.push(context_stack[context_stack.length - 1].last_value);
+    } else {
+      if (n >= args.length) {
+        if (instruction) {
+          throw new RuntimeError("Not enough arguments", instruction.line, instruction.char);
+        } else {
+          throw new RuntimeError("Not enough arguments");
+        }
+      }
+      res.push(args[n++]);
+    }
+  }
+  return res;
 }

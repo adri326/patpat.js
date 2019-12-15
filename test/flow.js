@@ -57,5 +57,10 @@ describe("Program flow: if, for, etc.", () => {
       let result = execute("scripts/flow/use.patpat");
       assert.equal(result, "This will be printed first.\nAnd this will be printed second.\nI like this a lot!\n");
     });
+
+    it("Should load patterns and structs with #load, without executing the inner instructions", () => {
+      let result = execute("scripts/flow/load.patpat");
+      assert.equal(result, "I like this a lot!\n");
+    });
   });
 });
