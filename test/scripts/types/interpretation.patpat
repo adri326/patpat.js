@@ -1,0 +1,33 @@
+Entity: struct {
+  let name
+  let age
+
+  'new: (name, age) => {
+    self.name: name
+    self.age: age
+  }
+}
+
+'print_entity_name: (entity<Entity>) => {
+  'println(entity.name)
+}
+
+Person: struct {
+  let first_name
+  let last_name
+  let age
+
+  'new: (first_name, last_name, age) => {
+    self.first_name: first_name
+    self.last_name: last_name
+    self.age: age
+  }
+}
+
+Person -> Entity: { // Person will be disguised as Entity
+  target.name: self.first_name + " " + self.last_name
+  target.age: self.age
+}
+
+'print_entity_name(Entity.'new("Doggo", 7))
+'print_entity_name(Person.'new("John", "Smith", 34))

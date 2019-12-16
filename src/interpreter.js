@@ -121,10 +121,6 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
     instruction
   });
 
-  for (let n = 0; n < fn.args.length; n++) {
-    new_ctx.symbols[fn.args[n].name] = n_args[n];
-  }
-
   if (fn.kind !== KINDS.DEFINE_PATTERN && fn.types.filter(x => x !== null).length > 0) {
     throw new RuntimeError("Only patterns may have argument types.", fn.line, fn.char);
   } else if (fn.types.filter(x => x !== null).length > 0) {
@@ -153,10 +149,19 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
           throw new RuntimeError("No struct named " + type.name + " found!", instruction.line, instruction.char, instruction.file);
         }
         if (n_args[n].parent !== struct) {
-          wrong_type(type.name, n);
+          let interpretation;
+          if (interpretation = n_args[n].parent.interpretations.find(i => i.to === struct)) {
+            n_args[n] = n_args[n].convert(struct, context_stack);
+          } else {
+            wrong_type(type.name, n);
+          }
         }
       }
     }
+  }
+
+  for (let n = 0; n < fn.args.length; n++) {
+    new_ctx.symbols[fn.args[n].name] = n_args[n];
   }
 
   // if (instruction && fn.args && args.length < fn.args.filter(x => !x.optional).length) {
@@ -180,6 +185,14 @@ EXECUTORS[KINDS.PATTERN] = (instruction, context_stack) => {
     throw new RuntimeError("Pattern not found: " + instruction.name, instruction.line, instruction.char);
   }
   return pattern;
+};
+
+EXECUTORS[KINDS.TYPENAME] = (instruction, context_stack) => {
+  let struct = find_struct_in_stack(instruction.name, context_stack);
+  if (!struct) {
+    throw new RuntimeError("Struct not found: " + instruction.name, instruction.line, instruction.char);
+  }
+  return struct;
 };
 
 EXECUTORS[KINDS.SYMBOL] = function get_symbol(instruction, context_stack) {
@@ -253,9 +266,7 @@ EXECUTORS[KINDS.STRUCT_INIT] = function init_struct(instruction, context_stack) 
 
   let args = interprete_instruction(instruction.args, context_stack);
 
-  let new_ctx = new Context({
-    self: {...instance, patterns: struct.patterns, structs: {}}
-  });
+  let new_ctx = instance.to_context();
 
   call_raw(pattern, args, new_ctx.tail(context_stack), instruction);
 
@@ -478,6 +489,16 @@ EXECUTORS[KINDS.LOAD] = function load(instruction, context_stack) {
     path: instruction.path,
     context_stack: ctx.tail(context_stack)
   };
+}
+
+EXECUTORS[KINDS.DEFINE_INTERPRETATION] = function define_interpretation(instruction, context_stack) {
+  let struct_from = interprete_instruction(instruction.from, context_stack);
+  let struct_to = interprete_instruction(instruction.to, context_stack);
+  
+  struct_from.interpretations.push({
+    to: struct_to,
+    body: instruction.body
+  });
 }
 
 function distribute_args(args, raw_args, context_stack, options) {
