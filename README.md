@@ -30,6 +30,8 @@ Clone this repository, and you'll be good to go!
 
 ## What is PatPat?
 
+![logo](logo.png)
+
 PatPat is an interpreted general-purpose language, whose objective is to make it easier to write code once and use it in several projects.
 <!-- TODO: explain interpretations -->
 
