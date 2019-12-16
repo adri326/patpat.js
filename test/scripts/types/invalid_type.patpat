@@ -1,0 +1,15 @@
+// This script is meant to throw an error
+
+Entity: struct {
+  let name
+  
+  'new: (name) => {
+    self.name: name
+  }
+}
+
+'print_name: (entity<Entity>) => {
+  'println(entity.name)
+}
+
+'print_name(2)

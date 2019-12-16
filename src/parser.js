@@ -149,6 +149,15 @@ function parse_body(sub_terms, branch, options) {
         });
 
         break;
+      case MATCHERS.TYPE:
+        branch.terms.push({
+          kind: KINDS.TYPE,
+          line: current_term.line,
+          char: current_term.char,
+          name: current_term.word.slice(1, -1).trim()
+        });
+
+        break;
       default:
         branch.terms.push({
           kind: KINDS[current_term.matcher.name],
@@ -324,7 +333,7 @@ new TermMatcher("STRUCT", /^struct/, 600).append();
 new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
 new TermMatcher("USE", /^#use/, 600).append();
 new TermMatcher("LOAD", /^#load/, 600).append();
-
+new TermMatcher("TYPE", /^<\s*(?:[A-Z][\w_\d]*|number|bool|string|function)\s*>/, 800).append();
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
 OPERATORS = {

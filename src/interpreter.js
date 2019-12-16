@@ -18,6 +18,7 @@ const interpreter = module.exports.interprete = function interpreter(branch, sta
       if (instruction.name.startsWith("#")) {
         throw new CompileError("Patterns starting with # in non-structs are reserved to the compiler. Please use ' instead.", instruction.line, instruction.char);
       }
+      instruction.declaration_context = new_stack; // used to resolve argument types
       last_context.patterns[instruction.name] = instruction;
     } else if (instruction.kind === KINDS.STRUCT) {
       last_context.structs[instruction.name] = instruction;
@@ -122,6 +123,40 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
 
   for (let n = 0; n < fn.args.length; n++) {
     new_ctx.symbols[fn.args[n].name] = n_args[n];
+  }
+
+  if (fn.kind !== KINDS.DEFINE_PATTERN && fn.types.filter(x => x !== null).length > 0) {
+    throw new RuntimeError("Only patterns may have argument types.", fn.line, fn.char);
+  } else if (fn.types.filter(x => x !== null).length > 0) {
+    function wrong_type(expected, n) {
+      let got = typeof n_args[n] === "object" ? n_args[n].parent.name : typeof n_args[n];
+      throw new RuntimeError(
+        `Invalid argument type for ${fn.name}[${n}]; expected <${expected}>, got <${got}>.`,
+        instruction.line, instruction.char, instruction.file
+      );
+    }
+    let n = -1;
+    for (let type of fn.types) {
+      n++;
+      if (type === null) continue;
+      if (type.name === "number" && typeof n_args[n] !== "number") {
+        wrong_type("number", n);
+      } else if (type.name === "bool" && typeof n_args[n] !== "boolean") {
+        wrong_type("bool", n);
+      } else if (type.name === "string" && typeof n_args[n] !== "string") {
+        wrong_type("string", n);
+      } else if (type.name === "function" && n_args[n].kind !== KINDS.FUNCTION) {
+        wrong_type("function", n);
+      } else {
+        let struct = find_struct_in_stack(type.name, fn.declaration_context);
+        if (struct === KINDS.NOT_FOUND) {
+          throw new RuntimeError("No struct named " + type.name + " found!", instruction.line, instruction.char, instruction.file);
+        }
+        if (n_args[n].parent !== struct) {
+          wrong_type(type.name, n);
+        }
+      }
+    }
   }
 
   // if (instruction && fn.args && args.length < fn.args.filter(x => !x.optional).length) {

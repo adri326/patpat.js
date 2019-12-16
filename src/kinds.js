@@ -44,6 +44,7 @@ const KINDS = module.exports = {
   DECLARE_SYMBOL: Symbol("DECLARE_SYMBOL"),
   STRUCT_INSTANCE: Symbol("STRUCT_INSTANCE"),
   STRUCT_INIT: Symbol("STRUCT_INIT"),
+  TYPE: Symbol("TYPE"),
 
   USE: Symbol("USE"),
   LOAD: Symbol("LOAD"),

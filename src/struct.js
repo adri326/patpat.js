@@ -34,7 +34,14 @@ const StructInstance = module.exports.StructInstance = class StructInstance {
     this.kind = KINDS.STRUCT_INSTANCE;
     this.symbols = {};
     for (let name in parent.symbols) {
-      this.symbols[name] = interpreter.interprete_instruction(parent.symbols[name].default_value, new Context().tail([prelude]));
+      if (parent.symbols[name].default_value !== null) {
+        this.symbols[name] = interpreter.interprete_instruction(
+          parent.symbols[name].default_value,
+          new Context().tail([prelude])
+        );
+      } else {
+        this.symbols[name] = null;
+      }
     }
   }
 

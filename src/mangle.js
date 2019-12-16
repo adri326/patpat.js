@@ -192,6 +192,8 @@ function mangle_define(branch) {
           kind: KINDS.DEFINE_PATTERN,
           name: left.name,
           args: right.args,
+          types: right.types,
+          arg_positions: right.arg_positions,
           body: right.body,
           line: left.line,
           char: left.char,
@@ -405,6 +407,8 @@ function mangle_functions(branch) {
       }
 
       let args = [];
+      let types = [];
+      let arg_positions = [];
       let is_method = false;
 
       for (let instruction of branch.instructions[n - 1].instructions) {
@@ -413,8 +417,13 @@ function mangle_functions(branch) {
             ...instruction,
             symbolic: false
           });
-          continue
+          arg_positions.push([instruction.line, instruction.char, instruction.file]);
+          types.push(null);
+          continue;
         } else if (instruction.kind === KINDS.NEXT_ELEMENT) {
+          continue;
+        } else if (instruction.kind === KINDS.TYPE) {
+          types[types.length - 1] = instruction;
           continue;
         } else if (instruction.kind === KINDS.PATTERN_CALL) {
           if (instruction.pattern.name === "#self") {
@@ -451,6 +460,8 @@ function mangle_functions(branch) {
       insert(branch, {
         kind: KINDS.FUNCTION,
         args,
+        types,
+        arg_positions,
         body: branch.instructions[n + 1],
         is_method
       }, n - 1, 3);
