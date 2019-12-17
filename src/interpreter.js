@@ -121,9 +121,9 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
     instruction
   });
 
-  if (fn.kind !== KINDS.DEFINE_PATTERN && fn.types.filter(x => x !== null).length > 0) {
+  if (fn.kind !== KINDS.DEFINE_PATTERN && fn.types && fn.types.filter(x => x !== null).length > 0) {
     throw new RuntimeError("Only patterns may have argument types.", fn.line, fn.char);
-  } else if (fn.types.filter(x => x !== null).length > 0) {
+  } else if (fn.types && fn.types.filter(x => x !== null).length > 0) {
     function wrong_type(expected, n) {
       let got = typeof n_args[n] === "object" ? n_args[n].parent.name : typeof n_args[n];
       throw new RuntimeError(
@@ -302,14 +302,50 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
     instance = interprete_instruction(instruction.parent, context_stack, true);
   }
 
-  if (!instance) { // if the instance isn't defined
-    throw new RuntimeError("Variable not found", instruction.line, instruction.char);
+  if (instance === undefined || instance === KINDS.NOT_FOUND) { // if the instance isn't defined
+    throw new RuntimeError("Variable not found or undefined", instruction.line, instruction.char);
   }
-  if (instance.kind !== KINDS.STRUCT_INSTANCE && instance.kind !== KINDS.MODULE) { // if the instance isn't a struct or module
-    throw new RuntimeError("Cannot access member of " + instruction.parent.kind.description, instruction.parent.line, instruction.parent.char);
-  }
+  // if (instance.kind !== KINDS.STRUCT_INSTANCE && instance.kind !== KINDS.MODULE) { // if the instance isn't a struct or module
+  //   throw new RuntimeError("Cannot access member of " + instruction.parent.kind.description, instruction.parent.line, instruction.parent.char);
+  // }
 
-  if (instance.kind === KINDS.STRUCT_INSTANCE) {
+  if (["number", "boolean", "string", "undefined"].includes(typeof instance) || instance === null) {
+    if (instruction.member.kind === KINDS.PATTERN_CALL) {
+      let pattern; // get which corresponding pattern it is
+      let type;
+      switch (typeof instance) {
+        case "number":
+          pattern = prelude.NUM_OPS[instruction.member.pattern.name];
+          type = "number";
+          break;
+        case "boolean":
+          pattern = prelude.BOOL_OPS[instruction.member.pattern.name];
+          type = "bool";
+          break;
+        case "string":
+          pattern = prelude.STR_OPS[instruction.member.pattern.name];
+          type = "string";
+          break;
+        default:
+          pattern = prelude.ANY_OPS[instruction.member.pattern.name];
+          type = "any";
+      }
+
+      if (!pattern) {
+        throw new RuntimeError(`No method named ${instruction.member.pattern.name} found for <${type}>`, instruction.member.line, instruction.member.char, instruction.member.file);
+      }
+
+      let args = interprete_instruction(instruction.member.args, context_stack);
+
+      if (typeof pattern._execute === "function") {
+        return pattern._execute([instance, ...args], context_stack);
+      } else {
+        return call_raw(pattern, [instance, ...args], context_stack, instruction, {instance});
+      }
+    }
+  } else if (!instance) {
+    throw new RuntimeError("Cannot access member of " + typeof instance, instruction.parent.line, instruction.parent.char);
+  } else if (instance.kind === KINDS.STRUCT_INSTANCE) {
     switch (instruction.member.kind) {
       case KINDS.SYMBOL:
         if (!instance.symbols.hasOwnProperty(instruction.member.name)) { // if the symbol is not found
@@ -320,7 +356,7 @@ const member_access = EXECUTORS[KINDS.MEMBER_ACCESSOR] = function member_access(
       case KINDS.PATTERN_CALL:
         let pattern = instance.parent.patterns[instruction.member.pattern.name];
         if (!pattern) { // if the pattern is not found
-          throw new RuntimeError("Pattern not found in " + instruction.parent.name, instruction.member.line, instruction.member.char);
+          throw new RuntimeError("Pattern not found in " + instance.parent.name, instruction.member.line, instruction.member.char);
         }
         if (!pattern.is_method) {
           throw new RuntimeError("Pattern is not a method", instruction.member.line, instruction.member.char);

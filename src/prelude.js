@@ -284,7 +284,40 @@ const NUM_OPS = module.exports.NUM_OPS = {
   [KINDS.OP_LT]: (a, b) => a < b,
   [KINDS.OP_LTE]: (a, b) => a <= b,
   [KINDS.OP_GT]: (a, b) => a > b,
-  [KINDS.OP_GTE]: (a, b) => a >= b
+  [KINDS.OP_GTE]: (a, b) => a >= b,
+
+  "'sqrt": define_method("'sqrt", 1, ([x]) => x < 0 ? 0 : Math.sqrt(x)),
+  "'abs": define_method("'abs", 1, ([x]) => Math.abs(x)),
+  "'pow": define_method("'pow", 2, ([x, y]) => {
+    let res = Math.pow(x, y);
+    if (isNaN(res)) return 0;
+    return res;
+  }),
+  "'round": define_method("'round", 1, ([x]) => Math.round(x)),
+  "'floor": define_method("'floor", 1, ([x]) => Math.floor(x)),
+  "'ceil": define_method("'ceil", 1, ([x]) => Math.ceil(x)),
+  "'log": define_method("'log", 1, ([x]) => Math.log(x)),
+  "'exp": define_method("'exp", 1, ([x]) => Math.exp(x)),
+  "'cos": define_method("'cos", 1, ([x]) => Math.cos(x)),
+
+  "'sin": define_method("'sin", 1, ([x]) => Math.sin(x)),
+  "'tan": define_method("'tan", 1, ([x]) => {
+    let res = Math.tan(x);
+    if (isNaN(res)) return 0;
+    return res;
+  }),
+  "'cosh": define_method("'cosh", 1, ([x]) => Math.cosh(x)),
+  "'sinh": define_method("'sinh", 1, ([x]) => Math.sinh(x)),
+  "'tanh": define_method("'tanh", 1, ([x]) => Math.tanh(x)),
+
+  "'asin": define_method("'asin", 1, ([x]) => x >= -1 && x <= 1 ? Math.asin(x) : 0),
+  "'acos": define_method("'acos", 1, ([x]) => x >= -1 && x <= 1 ? Math.acos(x) : 0),
+  "'atan": define_method("'atan", 1, ([x]) => Math.atan(x)),
+  "'asinh": define_method("'asinh", 1, ([x]) => Math.asinh(x)),
+  "'acosh": define_method("'acosh", 1, ([x]) => x > 0 ? Math.acosh(x) : 0),
+  "'atanh": define_method("'atanh", 1, ([x]) => x > -1 && x < 1 ? Math.atanh(x) : 0),
+
+  "'string": define_method("'string", 1, ([x]) => x.toString())
 };
 
 const BOOL_OPS = module.exports.BOOL_OPS = {
@@ -296,7 +329,9 @@ const BOOL_OPS = module.exports.BOOL_OPS = {
   [KINDS.OP_LT]: (a, b) => !a && b,
   [KINDS.OP_LTE]: (a, b) => !a || b,
   [KINDS.OP_GT]: (a, b) => a && !b,
-  [KINDS.OP_GTE]: (a, b) => a || !b
+  [KINDS.OP_GTE]: (a, b) => a || !b,
+
+  "'string": define_method("'string", 1, ([x]) => x.toString())
 };
 
 const STR_OPS = module.exports.STR_OPS = {
@@ -309,10 +344,41 @@ const STR_OPS = module.exports.STR_OPS = {
     }
   },
   [KINDS.OP_EQ]: (a, b) => a === b,
-  [KINDS.OP_NEQ]: (a, b) => a !== b
+  [KINDS.OP_NEQ]: (a, b) => a !== b,
+
+  "'string": define_method("'string", 1, ([x]) => x.toString()),
+  "'length": define_method("'length", 1, ([x]) => x.length),
+  "'to_lower": define_method("'to_lower", 1, ([x]) => x.toLowerCase()),
+  "'to_upper": define_method("'to_upper", 1, ([x]) => x.toUpperCase()),
+  "'includes": define_method("'includes", 2, ([x, y]) => x.includes(y)),
+  "'slice": {
+    kind: KINDS.PATTERN,
+    name: "'slice",
+    args: [
+      {name: "string", optional: false},
+      {name: "from", optional: true},
+      {name: "to", optional: true}
+    ],
+    _execute: ([string, from = 0, to = 0]) => string.slice(from, to)
+  },
+  "'char_at": define_method("'char_at", 2, ([x, y]) => x.charCodeAt(y) || 0)
 };
 
 const ANY_OPS = module.exports.ANY_OPS = {
   [KINDS.OP_EQ]: (a, b) => a === b,
-  [KINDS.OP_NEQ]: (a, b) => a !== b
+  [KINDS.OP_NEQ]: (a, b) => a !== b,
+
+  "'string": define_method("'string", 1, ([x]) => x.toString())
+}
+
+function define_method(name, n_args, fn) {
+  return {
+    kind: KINDS.PATTERN,
+    name,
+    args: new Array(n_args).map((_, i) => ({
+      name: ["x", "y", "z"][i] || ("n_" + i),
+      optional: false
+    })),
+    _execute: fn
+  };
 }
