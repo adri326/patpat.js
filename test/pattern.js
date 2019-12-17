@@ -19,4 +19,9 @@ describe("Pattern execution", () => {
     let result = execute("scripts/pattern/execution.patpat");
     assert.equal(result, "I am a pattern.\nI am another pattern.\n");
   });
+
+  it("Should successfully execute primitive methods", () => {
+    let result = execute("scripts/pattern/primitive-patterns.patpat");
+    assert.equal(result, "2\n4\n-1\n1\n1\n0\n");
+  });
 });

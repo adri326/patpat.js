@@ -1,0 +1,6 @@
+'println((4).'sqrt())
+'println((2).'pow(2))
+'println((3.141592653589793).'cos())
+'println((0.75).'round())
+'println((0.35).'ceil())
+'println((0.75).'floor())
