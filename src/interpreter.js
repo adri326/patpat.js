@@ -150,7 +150,7 @@ const call_raw = module.exports.call_raw = function call_raw(fn, args, context_s
         }
         if (n_args[n].parent !== struct) {
           let interpretation;
-          if (interpretation = n_args[n].parent.interpretations.find(i => i.to === struct)) {
+          if (n_args[n].parent && (interpretation = n_args[n].parent.interpretations.find(i => i.to === struct))) {
             n_args[n] = n_args[n].convert(struct, context_stack);
           } else {
             wrong_type(type.name, n);
