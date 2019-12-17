@@ -24,6 +24,7 @@ module.exports = function mangle_body(branch, options) {
   mangle_accessors(branch, options);
   mangle_unary_expressions(branch, options);
   mangle_expressions(branch, options);
+  mangle_interpretations(branch, options);
   mangle_define(branch, options);
   mangle_declaration(branch, options);
 
@@ -569,6 +570,64 @@ function mangle_accessors(branch, options) {
       }, n - 1, 3);
       n--;
     }
+  }
+}
+
+function mangle_interpretations(branch, options) {
+  for (let n = 0; n < branch.instructions.length; n++) {
+    if (branch.instructions[n].kind !== KINDS.INTERPRETATION) continue;
+    if (n === 0) {
+      throw new CompileError(
+        "Interpretation symbol at beginning of " + option.ctx_kind,
+        branch.instructions[n].line, branch.instructions[n].char, branch.instructions[n].file
+      );
+    } else if (n >= branch.instructions.length - 3) {
+      throw new CompileError(
+        "Interpretation symbol at end of " + option.ctx_kind,
+        branch.instructions[n].line, branch.instructions[n].char, branch.instructions[n].file
+      );
+    }
+
+    if (
+      branch.instructions[n - 1].kind !== KINDS.TYPENAME
+      && !(branch.instructions[n - 1].kind !== KINDS.MEMBER_ACCESSOR
+        && branch.instructions[n - 1].right.kind === KINDS.TYPENAME)
+    ) {
+      throw new CompileError(
+        "Invalid term preceding interpratation symbol; expected a TYPENAME or MEMBER_ACCESSOR, got " + branch.instructions[n - 1].kind.description,
+        branch.instructions[n - 1].line, branch.instructions[n - 1].char, branch.instructions[n - 1].file
+      )
+    } else if (
+      branch.instructions[n + 1].kind !== KINDS.TYPENAME
+      && !(branch.instructions[n + 1].kind !== KINDS.MEMBER_ACCESSOR
+        && branch.instructions[n + 1].right.kind === KINDS.TYPENAME)
+    ) {
+      throw new CompileError(
+        "Invalid term following interpratation symbol; expected a TYPENAME or MEMBER_ACCESSOR, got " + branch.instructions[n + 1].kind.description,
+        branch.instructions[n + 1].line, branch.instructions[n + 1].char, branch.instructions[n + 1].file
+      )
+    } else if (branch.instructions[n + 2].kind !== KINDS.DEFINE) {
+      throw new CompileError(
+        "Invalid term following interpratation symbol; expected a DEFINE symbol, got " + branch.instructions[n + 2].kind.description,
+        branch.instructions[n + 2].line, branch.instructions[n + 2].char, branch.instructions[n + 2].file
+      )
+    } else if (branch.instructions[n + 3].kind !== KINDS.BLOCK) {
+      throw new CompileError(
+        "Invalid term following interpratation symbol; expected a BLOCK, got " + branch.instructions[n + 3].kind.description,
+        branch.instructions[n + 3].line, branch.instructions[n + 3].char, branch.instructions[n + 3].file
+      )
+    }
+
+    insert(branch, {
+      kind: KINDS.DEFINE_INTERPRETATION,
+      line: branch.instructions[n - 1].line,
+      char: branch.instructions[n - 1].char,
+      file: branch.instructions[n - 1].file,
+      from: branch.instructions[n - 1],
+      to: branch.instructions[n + 1],
+      body: branch.instructions[n + 3]
+    }, n - 1, 5);
+    n--;
   }
 }
 

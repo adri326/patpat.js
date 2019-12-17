@@ -334,6 +334,7 @@ new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
 new TermMatcher("USE", /^#use/, 600).append();
 new TermMatcher("LOAD", /^#load/, 600).append();
 new TermMatcher("TYPE", /^<\s*(?:[A-Z][\w_\d]*|number|bool|string|function)\s*>/, 800).append();
+new TermMatcher("INTERPRETATION", /^->/, 900).append();
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);
 OPERATORS = {

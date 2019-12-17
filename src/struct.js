@@ -12,6 +12,7 @@ module.exports = class Struct {
     this.line = line;
     this.char = char;
     this.operators = {};
+    this.interpretations = [];
     for (let name in patterns) {
       let pattern = patterns[name];
       let matching_operator = KINDS.OPERATOR_EQUIVS.find(([a, b]) => b === name);
@@ -47,7 +48,31 @@ const StructInstance = module.exports.StructInstance = class StructInstance {
 
   to_context() {
     return new Context({
-      self: {...this, patterns: this.parent.patterns, structs: {}}
+      self: {
+        ...this,
+        patterns: this.parent.patterns,
+        structs: {},
+        notify_update: this.notify_update,
+        alias: this
+      }
     });
+  }
+
+  convert(struct, context_stack) {
+    let interpretation = this.parent.interpretations.find(i => i.to === struct);
+    if (!interpretation) return KINDS.NOT_FOUND;
+    let res = new StructInstance(struct);
+
+    let new_ctx = this.to_context();
+    new_ctx.symbols.target = {
+      ...res,
+      patterns: struct.patterns,
+      structs: {},
+      alias: res
+    };
+
+    interpreter.interprete(interpretation.body, new_ctx.tail(context_stack));
+
+    return res;
   }
 }
