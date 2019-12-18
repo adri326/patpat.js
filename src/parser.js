@@ -150,11 +150,13 @@ function parse_body(sub_terms, branch, options) {
 
         break;
       case MATCHERS.TYPE:
+        let parsed = /^<\s*([~!]?)\s*([\w\d_]+)/.exec(current_term.word);
         branch.terms.push({
           kind: KINDS.TYPE,
           line: current_term.line,
           char: current_term.char,
-          name: current_term.word.slice(1, -1).trim()
+          name: parsed[2],
+          strength: parsed[1] === "" ? 0 : (parsed[1] === "!" ? 1 : -1)
         });
 
         break;
@@ -333,7 +335,7 @@ new TermMatcher("STRUCT", /^struct/, 600).append();
 new TermMatcher("MEMBER_ACCESSOR", /^\.(?!\.)/, 1400).append();
 new TermMatcher("USE", /^#use/, 600).append();
 new TermMatcher("LOAD", /^#load/, 600).append();
-new TermMatcher("TYPE", /^<\s*(?:[A-Z][\w_\d]*|number|bool|string|function)\s*>/, 800).append();
+new TermMatcher("TYPE", /^<\s*([!~]?)\s*(?:[A-Z][\w_\d]*|number|bool|string|function)\s*>/, 800).append();
 new TermMatcher("INTERPRETATION", /^->/, 900).append();
 
 MATCHERS = MATCHERS.sort((a, b) => b.priority - a.priority);

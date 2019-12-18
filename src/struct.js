@@ -13,6 +13,7 @@ module.exports = class Struct {
     this.char = char;
     this.operators = {};
     this.interpretations = [];
+    this.subset_cache = [];
     for (let name in patterns) {
       let pattern = patterns[name];
       let matching_operator = KINDS.OPERATOR_EQUIVS.find(([a, b]) => b === name);
@@ -26,6 +27,30 @@ module.exports = class Struct {
 
   instance() {
     return new StructInstance(this);
+  }
+
+  is_subset_of(struct) {
+    let cache;
+    if (cache = this.subset_cache.find((x) => x[1] === struct)) {
+      return cache[0];
+    }
+
+    for (let name in this.symbols) {
+      if (!struct.symbols.hasOwnProperty(name)) {
+        this.subset_cache.push([false, struct]);
+        return false;
+      }
+    }
+
+    for (let name in this.patterns) {
+      if (!struct.patterns.hasOwnProperty(name) && this.patterns[name].is_method) {
+        this.subset_cache.push([false, struct]);
+        return false;
+      }
+    }
+
+    this.subset_cache.push([true, struct]);
+    return true;
   }
 }
 

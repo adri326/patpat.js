@@ -18,4 +18,9 @@ describe("Types", () => {
     let result = execute("scripts/types/interpretation.patpat");
     assert.equal(result, "Doggo\nJohn Smith\n");
   });
+
+  it("Should allow subtypes to be used instead of the expected type in loose typing", () => {
+    let result = execute("scripts/types/loose.patpat");
+    assert.equal(result, "false\ntrue\n1\n3\n");
+  });
 });

@@ -1,0 +1,20 @@
+A: struct {
+  let a: 3
+  let b: 2
+  'new: () => {}
+}
+
+B: struct {
+  let a: 1
+  'new: () => {}
+}
+
+'a: (x<~B>) => {
+  x.a
+}
+
+'println('is_subset_of(A.'new(), B.'new()))
+'println('is_subset_of(B.'new(), A.'new()))
+
+'println('a(B.'new()))
+'println('a(A.'new()))

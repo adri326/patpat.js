@@ -259,6 +259,27 @@ prelude.patterns = {
     _execute: ([value], _, line, char) => {
       throw new RuntimeError("Runtime Error" + (value ? ": " + value : ""), line, char);
     }
+  },
+
+  "'is_subset_of": {
+    kind: KINDS.PATTERN,
+    name: "'is_subset_of",
+    args: [
+      {name: "A", optional: false},
+      {name: "B", optional: false}
+    ],
+    _execute: ([a, b], _, line, char) => {
+      if (!a || a.kind !== KINDS.STRUCT_INSTANCE && a.kind !== KINDS.STRUCT) {
+        throw new RuntimeError("Invalid argument given to 'subset[0]; expected STRUCT or STRUCT_INSTANCE, got " + (a ? a.kind.description : "<null>"), line, char);
+      } else if (!b || b.kind !== KINDS.STRUCT_INSTANCE && b.kind !== KINDS.STRUCT) {
+        throw new RuntimeError("Invalid argument given to 'subset[1]; expected STRUCT or STRUCT_INSTANCE, got " + (b ? b.kind.description : "<null>"), line, char);
+      }
+
+      let struct_a = a.kind === KINDS.STRUCT ? a : a.parent;
+      let struct_b = b.kind === KINDS.STRUCT ? b : b.parent;
+
+      return struct_a.is_subset_of(struct_b);
+    }
   }
 }
 
