@@ -511,7 +511,7 @@ EXECUTORS[KINDS.USE] = function use(instruction, context_stack) {
   };
 }
 
-EXECUTORS[KINDS.LOAD] = function load(instruction, context_stack) {
+const load = EXECUTORS[KINDS.LOAD] = function load(instruction, context_stack) {
   let ctx = new Context();
   for (let i of prelude.sourced[instruction.path].instructions) {
     if (i.kind === KINDS.DEFINE_PATTERN) {
@@ -523,6 +523,13 @@ EXECUTORS[KINDS.LOAD] = function load(instruction, context_stack) {
       ctx.structs[i.name] = i;
     }
   }
+
+  for (let i of prelude.sourced[instruction.path].instructions) {
+    if (i.kind === KINDS.LOAD || i.kind === KINDS.USE) {
+      load(i, ctx.tail(context_stack));
+    }
+  }
+
   return {
     kind: KINDS.MODULE,
     symbols: {},
